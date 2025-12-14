@@ -158,11 +158,6 @@ export default function LoginPage() {
             </Link>
           </p>
         </div>
-
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <p className="text-xs text-gray-600 font-semibold mb-2">Demo Credentials:</p>
-          <p className="text-xs text-gray-600">Superadmin: superadmin@pos.com / superadmin123</p>
-        </div>
       </div>
     </div>
   );
