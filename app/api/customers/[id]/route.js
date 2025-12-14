@@ -3,6 +3,7 @@ import { customerDB } from '@/lib/database';
 
 export async function GET(request, { params }) {
   try {
+    const { id } = await params;
     const sessionCookie = request.cookies.get('session');
     let session = null;
     
@@ -24,7 +25,7 @@ export async function GET(request, { params }) {
       );
     }
     
-    const customer = await customerDB.findById(params.id);
+    const customer = await customerDB.findById(id);
     if (!customer) {
       return NextResponse.json(
         { error: 'Customer not found' },
@@ -44,6 +45,7 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   try {
+    const { id } = await params;
     const sessionCookie = request.cookies.get('session');
     let session = null;
     
@@ -66,7 +68,7 @@ export async function PUT(request, { params }) {
     }
     
     const updates = await request.json();
-    const updatedCustomer = await customerDB.update(params.id, updates);
+    const updatedCustomer = await customerDB.update(id, updates);
     
     if (!updatedCustomer) {
       return NextResponse.json(
@@ -87,6 +89,7 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
+    const { id } = await params;
     const sessionCookie = request.cookies.get('session');
     let session = null;
     
@@ -108,7 +111,7 @@ export async function DELETE(request, { params }) {
       );
     }
     
-    const deleted = await customerDB.delete(params.id);
+    const deleted = await customerDB.delete(id);
     if (!deleted) {
       return NextResponse.json(
         { error: 'Customer not found' },

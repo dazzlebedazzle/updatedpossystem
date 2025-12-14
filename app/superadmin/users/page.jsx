@@ -5,17 +5,30 @@ import Layout from '@/components/Layout';
 import Link from 'next/link';
 import { getDefaultPermissions } from '@/lib/permissions';
 import { toast } from '@/lib/toast';
+import { suppliers } from '@/lib/suppliers';
 
 export default function SuperAdminUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
   const [selectedRole, setSelectedRole] = useState('agent'); // Track which role button was clicked
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     role: 'agent',
+    supplier: '',
+    permissions: []
+  });
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    newPassword: '',
+    role: 'agent',
+    supplier: '',
     permissions: []
   });
   
@@ -57,7 +70,7 @@ export default function SuperAdminUsers() {
         toast.success('User created successfully!');
         setShowModal(false);
         const defaultPerms = getDefaultPermissions('agent');
-        setFormData({ name: '', email: '', password: '', role: 'agent', permissions: defaultPerms });
+        setFormData({ name: '', email: '', password: '', role: 'agent', supplier: '', permissions: defaultPerms });
         setSelectedRole('agent');
         fetchUsers();
       } else {
@@ -66,6 +79,73 @@ export default function SuperAdminUsers() {
       }
     } catch (error) {
       console.error('Error creating user:', error);
+    }
+  };
+
+  const handleEdit = async (user) => {
+    setEditingUser(user);
+    setEditFormData({
+      name: user.name || '',
+      email: user.email || '',
+      password: '',
+      newPassword: '',
+      role: user.role || 'agent',
+      supplier: user.supplier || '',
+      permissions: user.permissions || []
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateUser = async (e) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    try {
+      const userId = editingUser._id || editingUser.id;
+      const updateData = {
+        name: editFormData.name,
+        email: editFormData.email,
+        role: editFormData.role,
+        supplier: editFormData.role === 'agent' ? editFormData.supplier : '',
+        permissions: editFormData.permissions
+      };
+
+      // Only include password if new password is provided
+      if (editFormData.newPassword && editFormData.newPassword.trim() !== '') {
+        if (editFormData.newPassword.length < 6) {
+          toast.error('Password must be at least 6 characters');
+          return;
+        }
+        updateData.password = editFormData.newPassword;
+      }
+
+      const response = await fetch(`/api/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData),
+      });
+
+      if (response.ok) {
+        toast.success('User updated successfully!');
+        setShowEditModal(false);
+        setEditingUser(null);
+        setEditFormData({
+          name: '',
+          email: '',
+          password: '',
+          newPassword: '',
+          role: 'agent',
+          supplier: '',
+          permissions: []
+        });
+        fetchUsers();
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || 'Failed to update user');
+      }
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast.error('Failed to update user');
     }
   };
 
@@ -98,7 +178,7 @@ export default function SuperAdminUsers() {
               onClick={() => {
                 setSelectedRole('admin');
                 const defaultPerms = getDefaultPermissions('admin');
-                setFormData({ name: '', email: '', password: '', role: 'admin', permissions: defaultPerms });
+                setFormData({ name: '', email: '', password: '', role: 'admin', supplier: '', permissions: defaultPerms });
                 setShowModal(true);
               }}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
@@ -109,7 +189,7 @@ export default function SuperAdminUsers() {
               onClick={() => {
                 setSelectedRole('agent');
                 const defaultPerms = getDefaultPermissions('agent');
-                setFormData({ name: '', email: '', password: '', role: 'agent', permissions: defaultPerms });
+                setFormData({ name: '', email: '', password: '', role: 'agent', supplier: '', permissions: defaultPerms });
                 setShowModal(true);
               }}
               className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition flex items-center gap-2"
@@ -141,13 +221,24 @@ export default function SuperAdminUsers() {
                           </span>
                         </div>
                         <p className="mt-1 text-sm text-gray-500">{user.email}</p>
+                        {user.supplier && (
+                          <p className="mt-1 text-xs text-gray-400">Supplier: {user.supplier}</p>
+                        )}
                       </div>
-                      <button
-                        onClick={() => handleDelete(userId)}
-                        className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-sm"
-                      >
-                        Delete
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEdit(user)}
+                          className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-sm"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(userId)}
+                          className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-sm"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </li>
                 );
@@ -167,7 +258,7 @@ export default function SuperAdminUsers() {
                   onClick={() => {
                     setShowModal(false);
                     const defaultPerms = getDefaultPermissions('agent');
-                    setFormData({ name: '', email: '', password: '', role: 'agent', permissions: defaultPerms });
+                    setFormData({ name: '', email: '', password: '', role: 'agent', supplier: '', permissions: defaultPerms });
                   }}
                   className="text-gray-400 hover:text-gray-600 text-2xl"
                 >
@@ -241,13 +332,36 @@ export default function SuperAdminUsers() {
                       : 'Agent can access POS interface and view personal sales'}
                   </p>
                 </div>
+                {formData.role === 'agent' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Supplier Name <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={formData.supplier}
+                      onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
+                      required
+                      className="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">Select Supplier</option>
+                      {suppliers.map((supplier) => (
+                        <option key={supplier} value={supplier}>
+                          {supplier}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Each supplier name must be unique. Select from the predefined list.
+                    </p>
+                  </div>
+                )}
                 <div className="flex justify-end space-x-3 pt-4">
                   <button
                     type="button"
                     onClick={() => {
                       setShowModal(false);
                       const defaultPerms = getDefaultPermissions('agent');
-                      setFormData({ name: '', email: '', password: '', role: 'agent', permissions: defaultPerms });
+                      setFormData({ name: '', email: '', password: '', role: 'agent', supplier: '', permissions: defaultPerms });
                     }}
                     className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
                   >
@@ -262,6 +376,163 @@ export default function SuperAdminUsers() {
                     }`}
                   >
                     Create {formData.role === 'admin' ? 'Admin' : 'Agent'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Edit User Modal */}
+        {showEditModal && editingUser && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+            <div className="relative mx-auto p-6 border w-96 shadow-lg rounded-lg bg-white max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-gray-900">
+                  Edit User
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingUser(null);
+                    setEditFormData({
+                      name: '',
+                      email: '',
+                      password: '',
+                      newPassword: '',
+                      role: 'agent',
+                      supplier: '',
+                      permissions: []
+                    });
+                  }}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+              <form onSubmit={handleUpdateUser} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <input
+                    type="text"
+                    value={editFormData.name}
+                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                    required
+                    placeholder="Enter full name"
+                    className="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={editFormData.email}
+                    onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                    required
+                    placeholder="Enter email address"
+                    className="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                  <input
+                    type="password"
+                    value={editFormData.newPassword}
+                    onChange={(e) => setEditFormData({ ...editFormData, newPassword: e.target.value })}
+                    placeholder="Leave blank to keep current password"
+                    minLength={6}
+                    className="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Leave blank to keep current password. Minimum 6 characters if changing.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const defaultPerms = getDefaultPermissions('admin');
+                        setEditFormData({ ...editFormData, role: 'admin', permissions: defaultPerms });
+                      }}
+                      className={`flex-1 px-4 py-2 rounded-md border-2 transition ${
+                        editFormData.role === 'admin'
+                          ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
+                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      Admin
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const defaultPerms = getDefaultPermissions('agent');
+                        setEditFormData({ ...editFormData, role: 'agent', permissions: defaultPerms });
+                      }}
+                      className={`flex-1 px-4 py-2 rounded-md border-2 transition ${
+                        editFormData.role === 'agent'
+                          ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-medium'
+                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      Agent
+                    </button>
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500">
+                    {editFormData.role === 'admin' 
+                      ? 'Admin can manage products, sales, customers, and inventory'
+                      : 'Agent can access POS interface and view personal sales'}
+                  </p>
+                </div>
+                {editFormData.role === 'agent' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Supplier Name <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={editFormData.supplier}
+                      onChange={(e) => setEditFormData({ ...editFormData, supplier: e.target.value })}
+                      required
+                      className="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">Select Supplier</option>
+                      {suppliers.map((supplier) => (
+                        <option key={supplier} value={supplier}>
+                          {supplier}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Each supplier name must be unique. Select from the predefined list.
+                    </p>
+                  </div>
+                )}
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditModal(false);
+                      setEditingUser(null);
+                      setEditFormData({
+                        name: '',
+                        email: '',
+                        password: '',
+                        newPassword: '',
+                        role: 'agent',
+                        supplier: '',
+                        permissions: []
+                      });
+                    }}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+                  >
+                    Update User
                   </button>
                 </div>
               </form>

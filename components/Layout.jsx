@@ -3,6 +3,7 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
 
 // Create a context for sidebar state
 const SidebarContext = createContext({
@@ -55,34 +56,50 @@ export default function Layout({ children, userRole, userName }) {
   };
 
   const getNavItems = () => {
-    if (userRole === 'superadmin') {
-      return [
-        { href: '/superadmin/dashboard', label: 'Dashboard', icon: '📊' },
-        { href: '/superadmin/users', label: 'Users', icon: '👥' },
-        { href: '/superadmin/permissions', label: 'Permissions (CRUD)', icon: '🔐' },
-        { href: '/superadmin/products', label: 'Products', icon: '📦' },
-        { href: '/superadmin/pos', label: 'POS', icon: '🛒' },
-        { href: '/superadmin/sales', label: 'Sales', icon: '💰' },
-        { href: '/superadmin/customers', label: 'Customers', icon: '👤' },
-        { href: '/superadmin/inventory', label: 'Inventory', icon: '📋' },
-        { href: '/superadmin/reports', label: 'Reports', icon: '📈' },
-      ];
-    } else if (userRole === 'admin') {
-      return [
-        { href: '/admin/dashboard', label: 'Dashboard', icon: '📊' },
-        { href: '/admin/products', label: 'Products', icon: '📦' },
-        { href: '/admin/pos', label: 'POS', icon: '🛒' },
-        { href: '/admin/sales', label: 'Sales', icon: '💰' },
-        { href: '/admin/customers', label: 'Customers', icon: '👤' },
-        { href: '/admin/inventory', label: 'Inventory', icon: '📋' },
-      ];
-    } else {
-      return [
-        { href: '/user/dashboard', label: 'Dashboard', icon: '📊' },
-        { href: '/user/pos', label: 'POS', icon: '🛒' },
-        { href: '/user/sales', label: 'My Sales', icon: '💰' },
-      ];
-    }
+    const userPermissions = user?.permissions || [];
+    const basePath = userRole === 'superadmin' ? '/superadmin' : userRole === 'admin' ? '/admin' : '/user';
+    
+    // Define all possible menu items with their required permissions
+    const allMenuItems = [
+      { href: `${basePath}/dashboard`, label: 'Dashboard', icon: '📊', module: null, alwaysShow: true },
+      { href: `${basePath}/users`, label: 'Users', icon: '👥', module: MODULES.USERS },
+      { href: `${basePath}/permissions`, label: 'Permissions (CRUD)', icon: '🔐', module: MODULES.USERS },
+      { href: `${basePath}/products`, label: 'Products', icon: '📦', module: MODULES.PRODUCTS },
+      { href: `${basePath}/pos`, label: 'POS', icon: '🛒', module: MODULES.SALES },
+      { href: `${basePath}/sales`, label: userRole === 'user' ? 'My Sales' : 'Sales', icon: '💰', module: MODULES.SALES },
+      { href: `${basePath}/customers`, label: 'Customers', icon: '👤', module: MODULES.CUSTOMERS },
+      { href: `${basePath}/inventory`, label: 'Inventory', icon: '📋', module: MODULES.INVENTORY },
+      { href: `${basePath}/reports`, label: 'Reports', icon: '📈', module: MODULES.REPORTS },
+    ];
+
+    // Filter menu items based on permissions only (no role restrictions)
+    return allMenuItems.filter(item => {
+      // Always show dashboard
+      if (item.alwaysShow) return true;
+      
+      // If no module specified, show it (shouldn't happen, but safety check)
+      if (!item.module) return true;
+      
+      // Check if user has READ permission for this module
+      // For POS, check if user has CREATE or READ permission for SALES
+      if (item.module === MODULES.SALES && item.href.includes('/pos')) {
+        return hasPermission(userPermissions, MODULES.SALES, OPERATIONS.CREATE) || 
+               hasPermission(userPermissions, MODULES.SALES, OPERATIONS.READ);
+      }
+      
+      // For Users and Permissions pages, check if user has READ permission for USERS module
+      if (item.module === MODULES.USERS) {
+        return hasPermission(userPermissions, MODULES.USERS, OPERATIONS.READ);
+      }
+      
+      // For Reports, check if user has READ permission for REPORTS module
+      if (item.module === MODULES.REPORTS) {
+        return hasPermission(userPermissions, MODULES.REPORTS, OPERATIONS.READ);
+      }
+      
+      // For other modules, check READ permission
+      return hasPermission(userPermissions, item.module, OPERATIONS.READ);
+    });
   };
 
   if (!user) {

@@ -2,18 +2,34 @@
 
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
+import { authenticatedFetch } from '@/lib/api-client';
 
 export default function UserSales() {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [userInfo, setUserInfo] = useState(null);
 
   useEffect(() => {
+    fetchUserInfo();
     fetchSales();
   }, []);
 
+  const fetchUserInfo = async () => {
+    try {
+      const response = await authenticatedFetch('/api/auth/me');
+      if (response.ok) {
+        const data = await response.json();
+        setUserInfo(data.user);
+      }
+    } catch (error) {
+      console.error('Error fetching user info:', error);
+    }
+  };
+
   const fetchSales = async () => {
     try {
-      const response = await fetch('/api/sales');
+      // Use authenticatedFetch which automatically includes Bearer token
+      const response = await authenticatedFetch('/api/sales');
       const data = await response.json();
       setSales(data.sales || []);
     } catch (error) {
@@ -26,7 +42,25 @@ export default function UserSales() {
   return (
     <Layout userRole="user">
       <div className="px-4 py-6 sm:px-0">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">My Sales</h1>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">My Sales</h1>
+            {userInfo && (
+              <p className="text-sm text-gray-600 mt-1">
+                Showing sales for: <span className="font-semibold">{userInfo.name}</span> ({userInfo.email})
+              </p>
+            )}
+          </div>
+          <button
+            onClick={() => {
+              setLoading(true);
+              fetchSales();
+            }}
+            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
+          >
+            Refresh
+          </button>
+        </div>
 
         {loading ? (
           <div>Loading...</div>
@@ -43,17 +77,27 @@ export default function UserSales() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {sales.map((sale) => (
-                  <tr key={sale.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{sale.id}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(sale.createdAt).toLocaleDateString()}
+                {sales.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                      No sales found
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{sale.items?.length || 0}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{sale.total?.toFixed(2)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{sale.paymentMethod}</td>
                   </tr>
-                ))}
+                ) : (
+                  sales.map((sale) => (
+                    <tr key={sale._id || sale.id || `sale-${Math.random()}`}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {(sale._id || sale.id || '').toString().substring(0, 8)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(sale.createdAt || sale.date).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{sale.items?.length || 0} item(s)</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">₹{parseFloat(sale.total || 0).toFixed(2)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{sale.paymentMethod || 'N/A'}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

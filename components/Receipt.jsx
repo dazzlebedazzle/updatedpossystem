@@ -1,18 +1,35 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
+import jsPDF from 'jspdf';
 
 export default function Receipt({ saleData, onClose }) {
   const receiptRef = useRef();
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Auto-trigger print dialog when receipt opens
+  // Detect mobile device
   useEffect(() => {
-    const timer = setTimeout(() => {
-      handlePrint();
-    }, 500); // Small delay to ensure DOM is ready
-
-    return () => clearTimeout(timer);
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+      const isAndroid = /android/i.test(userAgent);
+      const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+      setIsMobile(isAndroid || isIOS || window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Auto-trigger print dialog only on desktop
+  useEffect(() => {
+    if (!isMobile) {
+      const timer = setTimeout(() => {
+        handlePrint();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isMobile]);
 
   const handlePrint = () => {
     const printContent = receiptRef.current;
@@ -45,9 +62,16 @@ export default function Receipt({ saleData, onClose }) {
               margin-bottom: 10px;
             }
             .logo {
-              font-size: 24px;
-              font-weight: bold;
               margin-bottom: 5px;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+            }
+            .logo img {
+              max-width: 120px;
+              max-height: 60px;
+              object-fit: contain;
+              display: block;
             }
             .company-name {
               font-size: 18px;
@@ -177,6 +201,179 @@ export default function Receipt({ saleData, onClose }) {
     }).format(amount);
   };
 
+  const handleSavePDF = async () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 10;
+    let yPosition = 10;
+    const lineHeight = 6;
+    const maxWidth = pageWidth - (margin * 2);
+
+    // Helper function to add text with word wrap
+    const addText = (text, x, y, fontSize = 10, align = 'left', maxWidth = pageWidth - (margin * 2)) => {
+      doc.setFontSize(fontSize);
+      const lines = doc.splitTextToSize(text, maxWidth);
+      doc.text(lines, x, y, { align });
+      return lines.length * (fontSize * 0.4);
+    };
+
+    // Header with Logo
+    try {
+      // Load logo image
+      const logoImg = new Image();
+      logoImg.crossOrigin = 'anonymous';
+      logoImg.src = '/assets/category_images/logoo.png';
+      
+      // Wait for image to load
+      await new Promise((resolve, reject) => {
+        if (logoImg.complete) {
+          resolve();
+        } else {
+          logoImg.onload = resolve;
+          logoImg.onerror = () => {
+            console.warn('Logo image failed to load, using text fallback');
+            resolve(); // Resolve anyway to continue with fallback
+          };
+        }
+      });
+      
+      // Add logo to PDF if loaded successfully
+      if (logoImg.naturalWidth > 0) {
+        const logoWidth = 50;
+        const logoHeight = (logoImg.naturalHeight / logoImg.naturalWidth) * logoWidth;
+        doc.addImage(logoImg, 'PNG', (pageWidth - logoWidth) / 2, yPosition, logoWidth, logoHeight);
+        yPosition += logoHeight + 5;
+      } else {
+        // Fallback to text if image not loaded
+        doc.setFontSize(20);
+        doc.text('TAJALLI', pageWidth / 2, yPosition, { align: 'center' });
+        yPosition += 8;
+      }
+    } catch (error) {
+      console.error('Error adding logo to PDF:', error);
+      // Fallback to text if image fails
+      doc.setFontSize(20);
+      doc.text('TAJALLI', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 8;
+    }
+
+    doc.setFontSize(8);
+    doc.text('GSTIN: 07AAXCS0618K1ZT', pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 4;
+    doc.text('FASSAI: 13323999001107', pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 4;
+    doc.text('16-B Jangpura Road, Bhogal, Jangpura, New Delhi', pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 4;
+    doc.text('📞 +91-XXXXXXXXXX', pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 6;
+
+    // Line separator
+    doc.setLineWidth(0.5);
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 5;
+
+    // Receipt Info
+    doc.setFontSize(9);
+    doc.text(`Receipt: ${saleData.receiptNumber}`, margin, yPosition);
+    yPosition += 5;
+    doc.text(`Date: ${formatDate(saleData.date)}`, margin, yPosition);
+    yPosition += 6;
+
+    // Customer Details
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'bold');
+    doc.text('Customer Details:', margin, yPosition);
+    yPosition += 5;
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(9);
+    doc.text(`Name: ${saleData.customerName}`, margin, yPosition);
+    yPosition += 5;
+    doc.text(`Mobile: ${saleData.customerMobile}`, margin, yPosition);
+    yPosition += 5;
+    const addressLines = doc.splitTextToSize(`Address: ${saleData.customerAddress}`, maxWidth);
+    doc.text(addressLines, margin, yPosition);
+    yPosition += addressLines.length * 5 + 3;
+
+    // Line separator
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 5;
+
+    // Items Header
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'bold');
+    doc.text('Item', margin, yPosition);
+    doc.text('Price', pageWidth - margin, yPosition, { align: 'right' });
+    yPosition += 5;
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 3;
+
+    // Items
+    doc.setFont(undefined, 'normal');
+    saleData.items.forEach((item) => {
+      // Check if we need a new page
+      if (yPosition > doc.internal.pageSize.getHeight() - 30) {
+        doc.addPage();
+        yPosition = 10;
+      }
+
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'bold');
+      const itemNameLines = doc.splitTextToSize(item.name, maxWidth - 50);
+      doc.text(itemNameLines, margin, yPosition);
+      
+      const qtyText = item.unit === 'kg' 
+        ? `${item.quantity / 1000} kg × ${formatCurrency(item.price)}`
+        : `${item.quantity} pcs × ${formatCurrency(item.price)}`;
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(8);
+      doc.text(qtyText, margin, yPosition + (itemNameLines.length * 4));
+      
+      doc.setFontSize(9);
+      doc.text(formatCurrency(item.total), pageWidth - margin, yPosition, { align: 'right' });
+      
+      yPosition += Math.max(itemNameLines.length * 4 + 4, 8) + 2;
+    });
+
+    yPosition += 3;
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 5;
+
+    // Totals
+    doc.setFontSize(9);
+    doc.text(`Subtotal: ${formatCurrency(saleData.subtotal)}`, pageWidth - margin, yPosition, { align: 'right' });
+    yPosition += 6;
+    
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 5;
+    doc.text(`Total: ${formatCurrency(saleData.total)}`, pageWidth - margin, yPosition, { align: 'right' });
+    yPosition += 6;
+    
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(9);
+    doc.text(`Payment Mode: ${saleData.paymentMethod}`, margin, yPosition);
+    yPosition += 8;
+
+    // Footer
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 5;
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'bold');
+    doc.text('Thank You!', pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 5;
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(9);
+    doc.text('Visit Again 😊', pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 5;
+    doc.setFontSize(8);
+    doc.text('www.tajalli.com', pageWidth / 2, yPosition, { align: 'center' });
+
+    // Save PDF
+    const fileName = `Receipt_${saleData.receiptNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(fileName);
+  };
+
   return (
     <>
       <div 
@@ -193,7 +390,9 @@ export default function Receipt({ saleData, onClose }) {
               <div className="receipt" style={{ maxWidth: '300px', margin: '0 auto', fontFamily: '"Courier New", monospace' }}>
                 {/* Header */}
                 <div className="header" style={{ textAlign: 'center', borderBottom: '2px dashed #000', paddingBottom: '10px', marginBottom: '10px' }}>
-                  <div className="logo" style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '5px' }}>🥜</div>
+                  <div className="logo" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '5px' }}>
+                    <img src="/assets/category_images/logoo.png" alt="Tajalli Logo" style={{ maxWidth: '120px', maxHeight: '60px', objectFit: 'contain' }} />
+                  </div>
                   <div className="company-name" style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '5px' }}>TAJALLI</div>
                   <div className="company-details" style={{ fontSize: '10px', lineHeight: '1.4' }}>
                     <div>GSTIN: 07AAXCS0618K1ZT</div>
@@ -282,14 +481,35 @@ export default function Receipt({ saleData, onClose }) {
 
           {/* Action Buttons */}
           <div className="flex gap-3 p-4 bg-gray-50 border-t">
+            {!isMobile ? (
+              <button
+                onClick={handlePrint}
+                className="flex-1 bg-green-600 text-white py-2.5 px-4 rounded-lg hover:bg-green-700 font-medium transition flex items-center justify-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                Print Receipt
+              </button>
+            ) : (
+              <button
+                onClick={handleSavePDF}
+                className="flex-1 bg-blue-600 text-white py-2.5 px-4 rounded-lg hover:bg-blue-700 font-medium transition flex items-center justify-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Save as PDF
+              </button>
+            )}
             <button
-              onClick={handlePrint}
-              className="flex-1 bg-green-600 text-white py-2.5 px-4 rounded-lg hover:bg-green-700 font-medium transition flex items-center justify-center gap-2"
+              onClick={handleSavePDF}
+              className={`flex-1 bg-indigo-600 text-white py-2.5 px-4 rounded-lg hover:bg-indigo-700 font-medium transition flex items-center justify-center gap-2 ${!isMobile ? '' : 'hidden'}`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Print Receipt
+              Save as PDF
             </button>
             <button
               onClick={onClose}

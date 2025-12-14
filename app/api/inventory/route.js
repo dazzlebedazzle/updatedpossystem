@@ -1,30 +1,42 @@
 import { NextResponse } from 'next/server';
-import { inventoryDB, productDB } from '@/lib/database';
+import { inventoryDB, productDB, userDB } from '@/lib/database';
+import { hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
+import { getSessionFromRequest } from '@/lib/auth-helper';
 
 export async function GET(request) {
   try {
-    const sessionCookie = request.cookies.get('session');
-    let session = null;
+    // Get session from Bearer token or cookie
+    const session = await getSessionFromRequest(request);
     
-    if (sessionCookie) {
-      try {
-        session = JSON.parse(sessionCookie.value);
-      } catch (e) {
-        return NextResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 }
-        );
-      }
-    }
-    
-    if (!session || !['superadmin', 'admin'].includes(session.role)) {
+    if (!session) {
       return NextResponse.json(
         { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Check READ permission for inventory
+    if (!hasPermission(session.permissions, MODULES.INVENTORY, OPERATIONS.READ)) {
+      return NextResponse.json(
+        { error: 'Permission denied: inventory:read' },
         { status: 403 }
       );
     }
     
-    const inventory = await inventoryDB.findAll();
+    let inventory = await inventoryDB.findAll();
+    
+    // Filter inventory based on user's token
+    // If user is an agent, show only their own inventory updates
+    // Superadmins and admins see all inventory
+    if (session.token === 'agentToken' && session.role === 'agent') {
+      const sessionUserId = session.userId?.toString();
+      inventory = inventory.filter(item => {
+        const itemObj = item.toObject ? item.toObject() : item;
+        const itemUserId = itemObj.userId?._id?.toString() || itemObj.userId?.toString() || itemObj.userId;
+        return itemUserId === sessionUserId;
+      });
+    }
+    
     return NextResponse.json({ inventory });
   } catch (error) {
     console.error('Get inventory error:', error);
@@ -37,23 +49,20 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const sessionCookie = request.cookies.get('session');
-    let session = null;
+    // Get session from Bearer token or cookie
+    const session = await getSessionFromRequest(request);
     
-    if (sessionCookie) {
-      try {
-        session = JSON.parse(sessionCookie.value);
-      } catch (e) {
-        return NextResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 }
-        );
-      }
-    }
-    
-    if (!session || !['superadmin', 'admin'].includes(session.role)) {
+    if (!session) {
       return NextResponse.json(
         { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Check CREATE permission for inventory
+    if (!hasPermission(session.permissions, MODULES.INVENTORY, OPERATIONS.CREATE)) {
+      return NextResponse.json(
+        { error: 'Permission denied: inventory:create' },
         { status: 403 }
       );
     }

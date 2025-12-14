@@ -5,6 +5,7 @@ import { hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
 
 export async function GET(request, { params }) {
   try {
+    const { id } = await params;
     const sessionCookie = request.cookies.get('session');
     let session = null;
     
@@ -34,7 +35,7 @@ export async function GET(request, { params }) {
       );
     }
     
-    const product = await productDB.findById(params.id);
+    const product = await productDB.findById(id);
     if (!product) {
       return NextResponse.json(
         { error: 'Product not found' },
@@ -54,6 +55,7 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   try {
+    const { id } = await params;
     const sessionCookie = request.cookies.get('session');
     let session = null;
     
@@ -84,7 +86,7 @@ export async function PUT(request, { params }) {
     }
     
     const updates = await request.json();
-    const updatedProduct = await productDB.update(params.id, updates);
+    const updatedProduct = await productDB.update(id, updates);
     
     if (!updatedProduct) {
       return NextResponse.json(
@@ -105,6 +107,7 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
+    const { id } = await params;
     const sessionCookie = request.cookies.get('session');
     let session = null;
     
@@ -134,7 +137,7 @@ export async function DELETE(request, { params }) {
       );
     }
     
-    const deleted = await productDB.delete(params.id);
+    const deleted = await productDB.delete(id);
     if (!deleted) {
       return NextResponse.json(
         { error: 'Product not found' },

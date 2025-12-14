@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Layout, { useSidebar } from '@/components/Layout';
 import { toast } from '@/lib/toast';
 import Receipt from '@/components/Receipt';
+import { categories as predefinedCategories, getCategoryImage } from '@/lib/categories';
 
 export default function SuperAdminPOS() {
   const [products, setProducts] = useState([]);
@@ -31,38 +32,105 @@ export default function SuperAdminPOS() {
     try {
       const response = await fetch('/api/products');
       const data = await response.json();
-      setProducts(data.products || []);
+      const allProducts = data.products || [];
+      
+      // Remove duplicates using Set-based approach - more reliable
+      const seenIds = new Set();
+      const seenEANs = new Set();
+      const uniqueProducts = [];
+      
+      for (const product of allProducts) {
+        if (!product) continue;
+        
+        const productId = product._id || product.id;
+        const productEAN = product.EAN_code;
+        
+        // Create a unique key for this product
+        const idKey = productId ? String(productId) : null;
+        const eanKey = productEAN ? String(productEAN) : null;
+        
+        // Skip if we've seen this ID or EAN before
+        if ((idKey && seenIds.has(idKey)) || (eanKey && seenEANs.has(eanKey))) {
+          continue;
+        }
+        
+        // Mark as seen and add to unique products
+        if (idKey) seenIds.add(idKey);
+        if (eanKey) seenEANs.add(eanKey);
+        uniqueProducts.push(product);
+      }
+      
+      setProducts(uniqueProducts);
     } catch (error) {
       console.error('Error fetching products:', error);
-    } finally {
+} finally {
       setLoading(false);
     }
   };
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('/api/categories');
-      const data = await response.json();
       const allProducts = products.length > 0 ? products : (await fetch('/api/products').then(r => r.json())).products || [];
       
-      if (data.categories) {
-        const allCategory = { name: 'All', count: allProducts.length };
-        setCategories([allCategory, ...data.categories]);
-      } else {
-        const uniqueCategories = ['All', ...new Set(allProducts.map(p => p.category || 'general'))];
-        setCategories(uniqueCategories.map(cat => ({ 
-          name: cat, 
-          count: cat === 'All' ? allProducts.length : allProducts.filter(p => (p.category || 'general') === cat).length 
-        })));
-      }
+      // Get unique category names from products (as they appear in database)
+      const categoryMap = {};
+      allProducts.forEach(product => {
+        const categoryName = product.category || 'general';
+        if (!categoryMap[categoryName]) {
+          categoryMap[categoryName] = {
+            name: categoryName,
+            count: 0
+          };
+        }
+        categoryMap[categoryName].count++;
+      });
+      
+      // Match with predefined categories to get images
+      const categoriesWithCount = Object.values(categoryMap).map(dbCategory => {
+        // Find matching predefined category (case-insensitive)
+        const predefinedCat = predefinedCategories.find(
+          cat => cat.name.toLowerCase() === dbCategory.name.toLowerCase()
+        );
+        
+        return {
+          name: dbCategory.name, // Use database category name for display
+          image: predefinedCat ? predefinedCat.image : getCategoryImage(dbCategory.name),
+          count: dbCategory.count
+        };
+      });
+      
+      // Add "All" category with total count
+      const allCategory = { name: 'All', count: allProducts.length };
+      setCategories([allCategory, ...categoriesWithCount]);
     } catch (error) {
       console.error('Error fetching categories:', error);
       const allProducts = products.length > 0 ? products : [];
-      const uniqueCategories = ['All', ...new Set(allProducts.map(p => p.category || 'general'))];
-      setCategories(uniqueCategories.map(cat => ({ 
-        name: cat, 
-        count: cat === 'All' ? allProducts.length : allProducts.filter(p => (p.category || 'general') === cat).length 
-      })));
+      const categoryMap = {};
+      allProducts.forEach(product => {
+        const categoryName = product.category || 'general';
+        if (!categoryMap[categoryName]) {
+          categoryMap[categoryName] = {
+            name: categoryName,
+            count: 0
+          };
+        }
+        categoryMap[categoryName].count++;
+      });
+      
+      const categoriesWithCount = Object.values(categoryMap).map(dbCategory => {
+        const predefinedCat = predefinedCategories.find(
+          cat => cat.name.toLowerCase() === dbCategory.name.toLowerCase()
+        );
+        
+        return {
+          name: dbCategory.name,
+          image: predefinedCat ? predefinedCat.image : getCategoryImage(dbCategory.name),
+          count: dbCategory.count
+        };
+      });
+      
+      const allCategory = { name: 'All', count: allProducts.length };
+      setCategories([allCategory, ...categoriesWithCount]);
     }
   };
 
@@ -72,7 +140,20 @@ export default function SuperAdminPOS() {
     }
   }, [products.length]);
 
-  const filteredProducts = products.filter(product => {
+  // Additional deduplication check (products should already be unique from fetchProducts, but this is a safety measure)
+  const seenKeys = new Set();
+  const uniqueProducts = products.filter(product => {
+    if (!product) return false;
+    const productId = product._id || product.id;
+    const productEAN = product.EAN_code;
+    const key = productId ? String(productId) : (productEAN ? String(productEAN) : null);
+    
+    if (!key || seenKeys.has(key)) return false;
+    seenKeys.add(key);
+    return true;
+  });
+
+  const filteredProducts = uniqueProducts.filter(product => {
     if (!product) return false;
     const productName = (product.product_name || product.name || '').toLowerCase();
     const productEAN = (product.EAN_code || '').toString().toLowerCase();
@@ -184,6 +265,31 @@ export default function SuperAdminPOS() {
     }
 
     try {
+      // Save customer first
+      try {
+        const customerResponse = await fetch('/api/customers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: customerData.name,
+            phone: customerData.mobile,
+            address: customerData.address,
+            email: '' // Email not collected in POS form
+          }),
+        });
+        
+        if (customerResponse.ok) {
+          // Customer saved successfully (or already exists)
+        } else {
+          // Customer save failed, but continue with sale anyway
+          console.warn('Failed to save customer, continuing with sale');
+        }
+      } catch (customerError) {
+        // Customer save error, but continue with sale anyway
+        console.warn('Error saving customer:', customerError);
+      }
+
+      // Process the sale
       const response = await fetch('/api/sales', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -265,7 +371,7 @@ export default function SuperAdminPOS() {
 
   const getProductImage = (product) => {
     if (product.images) {
-      return `/category_images/${product.images}`;
+      return `/assets/category_images/${product.images}`;
     }
     return null;
   };
@@ -327,61 +433,90 @@ function POSContent({
   receiptData
 }) {
   const { sidebarWidth } = useSidebar();
+  const [showCartMobile, setShowCartMobile] = useState(false);
 
   return (
-    <div className="h-screen flex bg-gray-50 overflow-hidden -m-6" style={{ width: `calc(100vw - ${sidebarWidth}px)`, marginLeft: '-1.5rem', transition: 'width 0.3s ease' }}>
+    <div className="h-screen flex flex-col lg:flex-row bg-gray-50 overflow-hidden -m-6" style={{ width: `calc(100vw - ${sidebarWidth}px)`, marginLeft: '-1.5rem', transition: 'width 0.3s ease' }}>
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           {/* Search Bar */}
-          <div className="bg-white shadow-sm p-4 flex-shrink-0">
+          <div className="bg-white shadow-sm p-2 sm:p-4 flex-shrink-0">
             <form 
               onSubmit={(e) => {
                 e.preventDefault();
               }}
-              className="flex items-center gap-3"
+              className="flex items-center gap-2 sm:gap-3"
             >
               <input
                 type="text"
                 placeholder="Search product..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
               />
               <button
                 type="submit"
-                className="bg-purple-600 text-white px-6 py-2.5 rounded-lg hover:bg-purple-700 transition font-medium"
+                className="bg-purple-600 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg hover:bg-purple-700 transition font-medium text-sm sm:text-base whitespace-nowrap"
               >
-                Search
+                <span className="hidden sm:inline">Search</span>
+                <span className="sm:hidden">🔍</span>
+              </button>
+              {/* Mobile Cart Button */}
+              <button
+                type="button"
+                onClick={() => setShowCartMobile(true)}
+                className="lg:hidden relative bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition font-medium"
+              >
+                🛒
+                {cart.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {cart.length}
+                  </span>
+                )}
               </button>
             </form>
           </div>
 
           {/* Category Cards - Horizontal Scrollable */}
-          <div className="bg-white border-b shadow-sm px-4 py-3 flex-shrink-0">
-            <div className="overflow-x-auto scrollbar-hide">
-              <div className="flex gap-2 pb-2" style={{ width: 'max-content' }}>
+          <div className="bg-white border-b shadow-sm px-2 sm:px-4 py-2 sm:py-3 flex-shrink-0">
+            <div className="overflow-x-auto scrollbar-hide -mx-2 sm:mx-0">
+              <div className="flex gap-1.5 sm:gap-2 pb-2 px-2 sm:px-0" style={{ width: 'max-content' }}>
                 {categories.map((category) => {
                   const categoryName = category.name || category;
                   const isSelected = selectedCategory === categoryName;
+                  const categoryImage = category.image || getCategoryImage(categoryName);
                   return (
                     <button
                       key={categoryName}
                       onClick={() => setSelectedCategory(categoryName)}
-                      className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-xl whitespace-nowrap transition-all min-w-[66px] flex-shrink-0 ${
+                      className={`flex flex-col items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl whitespace-nowrap transition-all min-w-[60px] sm:min-w-[66px] flex-shrink-0 touch-manipulation ${
                         isSelected
                           ? 'bg-purple-600 text-white shadow-lg'
-                          : 'bg-amber-50 text-gray-700 hover:bg-amber-100 shadow-sm border border-amber-200'
+                          : 'bg-amber-50 text-gray-700 hover:bg-amber-100 active:bg-amber-200 shadow-sm border border-amber-200'
                       }`}
                     >
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${
+                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center overflow-hidden ${
                         isSelected ? 'bg-white/20' : 'bg-white'
                       }`}>
-                        {getCategoryIcon(categoryName)}
+                        {categoryImage ? (
+                          <img 
+                            src={categoryImage} 
+                            alt={categoryName}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div className={`w-full h-full flex items-center justify-center text-lg sm:text-xl ${categoryImage ? 'hidden' : 'flex'}`}>
+                          {getCategoryIcon(categoryName)}
+                        </div>
                       </div>
-                      <span className="capitalize font-medium text-xs">{categoryName}</span>
+                      <span className="capitalize font-medium text-[10px] sm:text-xs leading-tight">{categoryName}</span>
                       {category.count !== undefined && category.count > 0 && (
-                        <span className={`text-[10px] ${isSelected ? 'text-white/90' : 'text-gray-600'}`}>
-                          {category.count} items
+                        <span className={`text-[9px] sm:text-[10px] ${isSelected ? 'text-white/90' : 'text-gray-600'}`}>
+                          {category.count}
                         </span>
                       )}
                     </button>
@@ -392,27 +527,27 @@ function POSContent({
           </div>
 
           {/* Products Grid */}
-          <div className="flex-1 overflow-y-auto p-2">
+          <div className="flex-1 overflow-y-auto p-2 sm:p-4">
             {loading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
                 {[...Array(10)].map((_, index) => (
-                  <div key={index} className="bg-gray-50 border border-gray-200 rounded-lg p-2 shadow-sm animate-pulse" style={{ maxWidth: '200px' }}>
+                  <div key={index} className="bg-gray-50 border border-gray-200 rounded-lg p-1.5 sm:p-2 shadow-sm animate-pulse">
                     {/* Image Skeleton */}
-                    <div className="w-full h-16 bg-gray-300 rounded-md mb-2"></div>
+                    <div className="w-full h-12 sm:h-16 bg-gray-300 rounded-md mb-1.5 sm:mb-2"></div>
                     {/* Title Skeleton */}
-                    <div className="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
-                    <div className="h-4 bg-gray-300 rounded w-1/2 mb-2"></div>
+                    <div className="h-3 sm:h-4 bg-gray-300 rounded w-3/4 mb-1 sm:mb-2"></div>
+                    <div className="h-3 sm:h-4 bg-gray-300 rounded w-1/2 mb-1 sm:mb-2"></div>
                     {/* Price Skeleton */}
-                    <div className="h-5 bg-gray-300 rounded w-2/3 mb-2"></div>
+                    <div className="h-4 sm:h-5 bg-gray-300 rounded w-2/3 mb-1.5 sm:mb-2"></div>
                     {/* Button Skeleton */}
-                    <div className="h-8 bg-gray-300 rounded w-full"></div>
+                    <div className="h-7 sm:h-8 bg-gray-300 rounded w-full"></div>
                   </div>
                 ))}
               </div>
             ) : filteredProducts.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">No products found</div>
+              <div className="text-center py-8 sm:py-12 text-gray-500 text-sm sm:text-base">No products found</div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
                 {filteredProducts.map((product) => {
                   const productId = product._id || product.id;
                   const availableStock = (product.qty || 0) - (product.qty_sold || 0);
@@ -421,23 +556,22 @@ function POSContent({
                   return (
                     <div
                       key={productId}
-                      className={`bg-gray-50 border border-gray-200 rounded-lg p-2 shadow-sm transition ${
+                      className={`bg-gray-50 border border-gray-200 rounded-lg p-1.5 sm:p-2 shadow-sm transition touch-manipulation ${
                         availableStock > 0
-                          ? 'hover:shadow-md cursor-pointer'
+                          ? 'hover:shadow-md active:scale-95 cursor-pointer'
                           : 'opacity-50 cursor-not-allowed'
                       }`}
-                      style={{ maxWidth: '200px' }}
                     >
                       {/* Product Image - Clickable */}
                       <div 
                         onClick={() => availableStock > 0 && addToCart(product)}
-                        className="mb-2 cursor-pointer"
+                        className="mb-1.5 sm:mb-2 cursor-pointer"
                       >
                         {productImage ? (
                           <img 
                             src={productImage} 
                             alt={product.product_name || product.name}
-                            className="w-full h-16 object-cover rounded-md"
+                            className="w-full h-12 sm:h-16 object-cover rounded-md"
                             onError={(e) => {
                               e.target.style.display = 'none';
                               e.target.nextSibling.style.display = 'flex';
@@ -445,22 +579,22 @@ function POSContent({
                           />
                         ) : null}
                         <div 
-                          className={`w-full h-16 bg-gray-200 rounded-md flex items-center justify-center ${productImage ? 'hidden' : 'flex'}`}
+                          className={`w-full h-12 sm:h-16 bg-gray-200 rounded-md flex items-center justify-center ${productImage ? 'hidden' : 'flex'}`}
                         >
-                          <span className="text-2xl">📦</span>
+                          <span className="text-xl sm:text-2xl">📦</span>
                         </div>
                       </div>
                       
-                      <h3 className="font-medium text-xs text-gray-900 mb-1 line-clamp-2 min-h-[2rem]">
+                      <h3 className="font-medium text-[10px] sm:text-xs text-gray-900 mb-1 break-words" title={product.product_name || product.name}>
                         {product.product_name || product.name}
                       </h3>
-                      <p className="text-sm font-bold text-purple-600 mb-2">
-                        ₹{product.price || 0} {product.unit === 'packets' ? 'per packet' : 'per kg'}
+                      <p className="text-xs sm:text-sm font-bold text-purple-600 mb-1.5 sm:mb-2">
+                        ₹{product.price || 0} <span className="text-[10px] sm:text-xs">{product.unit === 'packets' ? '/pkt' : '/kg'}</span>
                       </p>
                       <button
                         onClick={() => addToCart(product)}
                         disabled={availableStock <= 0}
-                        className="w-full bg-red-600 text-white py-1.5 rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-xs font-medium transition"
+                        className="w-full bg-red-600 text-white py-1.5 sm:py-2 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-[10px] sm:text-xs font-medium transition touch-manipulation"
                       >
                         Add to Cart
                       </button>
@@ -472,8 +606,8 @@ function POSContent({
           </div>
         </div>
 
-        {/* Shopping Cart Sidebar */}
-        <div className="bg-white shadow-lg border-l flex flex-col flex-shrink-0" style={{ width: 'clamp(280px, 20%, 380px)', minWidth: '280px' }}>
+        {/* Shopping Cart Sidebar - Desktop */}
+        <div className="hidden lg:flex bg-white shadow-lg border-l flex-col flex-shrink-0" style={{ width: 'clamp(280px, 20%, 380px)', minWidth: '280px' }}>
           <div className="p-3 border-b flex-shrink-0">
             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
               <span>🛒</span> Cart
@@ -554,19 +688,131 @@ function POSContent({
           <div className="border-t p-3 bg-gray-50 flex-shrink-0">
             <div className="mb-2">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-lg font-bold text-gray-900">Total:</span>
-                <span className="text-2xl font-bold text-purple-600">₹{getTotal().toFixed(2)}</span>
+                <span className="text-base sm:text-lg font-bold text-gray-900">Total:</span>
+                <span className="text-xl sm:text-2xl font-bold text-purple-600">₹{getTotal().toFixed(2)}</span>
               </div>
             </div>
             <button
               onClick={() => setShowCheckoutPopup(true)}
               disabled={cart.length === 0}
-              className="w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition"
+              className="w-full bg-red-600 text-white py-2.5 sm:py-3 px-4 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition text-sm sm:text-base touch-manipulation"
             >
               Proceed to Checkout
             </button>
           </div>
         </div>
+
+        {/* Mobile Cart Drawer */}
+        {showCartMobile && (
+          <>
+            <div 
+              className="lg:hidden fixed inset-0 bg-black/50 z-40"
+              onClick={() => setShowCartMobile(false)}
+            ></div>
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white shadow-2xl rounded-t-2xl flex flex-col z-50" style={{ maxHeight: '80vh' }}>
+              <div className="p-4 border-b flex-shrink-0 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <span>🛒</span> Cart ({cart.length})
+                </h2>
+                <button
+                  onClick={() => setShowCartMobile(false)}
+                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto min-h-0 p-3">
+                {cart.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500 text-sm">
+                    <p>Cart is empty</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {cart.map((item) => {
+                      const product = products.find(p => (p._id || p.id) === item.productId);
+                      const availableStock = product ? (product.qty || 0) - (product.qty_sold || 0) : 0;
+                      const qtyInUnit = item.unit === 'kg' ? item.quantity / 1000 : item.quantity;
+                      const itemTotal = item.price * qtyInUnit;
+                      
+                      return (
+                        <div key={item.productId} className="bg-gray-50 rounded-lg p-2.5 border border-gray-200">
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-sm text-gray-900 mb-0.5 truncate">{item.name}</h4>
+                              <p className="text-xs text-gray-500">Available: {availableStock} {item.unit}</p>
+                            </div>
+                            <button
+                              onClick={() => removeFromCart(item.productId)}
+                              className="text-red-600 hover:text-red-800 text-lg font-medium ml-2 touch-manipulation"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                          
+                          <div className="flex items-center justify-between mt-2">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => updateQuantity(item.productId, item.quantity - (item.unit === 'kg' ? 100 : 1))}
+                                className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-sm font-bold touch-manipulation"
+                              >
+                                -
+                              </button>
+                              <div className="flex items-center">
+                                <input
+                                  type="number"
+                                  value={item.unit === 'kg' ? item.quantity : item.quantity}
+                                  onChange={(e) => {
+                                    const value = parseInt(e.target.value) || 0;
+                                    if (value >= 0) {
+                                      updateQuantity(item.productId, value);
+                                    }
+                                  }}
+                                  className="w-16 text-sm text-center font-medium border border-gray-300 rounded px-1 py-1 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                                  min="0"
+                                />
+                                <span className="text-xs ml-1 text-gray-600">
+                                  {item.unit === 'kg' ? 'g' : 'pcs'}
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => updateQuantity(item.productId, item.quantity + (item.unit === 'kg' ? 100 : 1))}
+                                disabled={item.quantity >= availableStock}
+                                className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 active:bg-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed text-sm font-bold touch-manipulation"
+                              >
+                                +
+                              </button>
+                            </div>
+                            <span className="text-sm font-bold text-gray-900">₹{itemTotal.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t p-4 bg-gray-50 flex-shrink-0">
+                <div className="mb-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-lg font-bold text-gray-900">Total:</span>
+                    <span className="text-2xl font-bold text-purple-600">₹{getTotal().toFixed(2)}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowCartMobile(false);
+                    setShowCheckoutPopup(true);
+                  }}
+                  disabled={cart.length === 0}
+                  className="w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition text-base touch-manipulation"
+                >
+                  Proceed to Checkout
+                </button>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Checkout Popup Overlay */}
         {showCheckoutPopup && (
@@ -575,9 +821,9 @@ function POSContent({
               className="fixed inset-0 bg-black/50 z-40"
               onClick={() => setShowCheckoutPopup(false)}
             ></div>
-            <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div className="fixed inset-0 flex items-center justify-center z-50 p-2 sm:p-4">
               <div 
-                className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+                className="bg-white rounded-lg sm:rounded-xl shadow-xl max-w-md w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
               >
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Customer Details</h3>

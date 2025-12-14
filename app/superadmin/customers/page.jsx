@@ -6,13 +6,6 @@ import Layout from '@/components/Layout';
 export default function SuperAdminCustomers() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    address: ''
-  });
 
   useEffect(() => {
     fetchCustomers();
@@ -30,36 +23,11 @@ export default function SuperAdminCustomers() {
     }
   };
 
-  const handleCreateCustomer = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await fetch('/api/customers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        setShowModal(false);
-        setFormData({ name: '', email: '', phone: '', address: '' });
-        fetchCustomers();
-      }
-    } catch (error) {
-      console.error('Error creating customer:', error);
-    }
-  };
-
   return (
     <Layout userRole="superadmin">
       <div className="px-4 py-6 sm:px-0">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Customers</h1>
-          <button
-            onClick={() => setShowModal(true)}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
-          >
-            Add Customer
-          </button>
         </div>
 
         {loading ? (
@@ -76,8 +44,8 @@ export default function SuperAdminCustomers() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {customers.map((customer) => (
-                  <tr key={customer.id}>
+                {customers.map((customer, index) => (
+                  <tr key={customer._id || customer.id || `customer-${index}`}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{customer.name}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.email}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.phone}</td>
@@ -86,67 +54,6 @@ export default function SuperAdminCustomers() {
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
-
-        {showModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">Add New Customer</h3>
-              <form onSubmit={handleCreateCustomer} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Name</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Email</label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Phone</label>
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Address</label>
-                  <textarea
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                  />
-                </div>
-                <div className="flex justify-end space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowModal(false)}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-                  >
-                    Create
-                  </button>
-                </div>
-              </form>
-            </div>
           </div>
         )}
       </div>

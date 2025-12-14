@@ -37,6 +37,13 @@ const userSchema = new mongoose.Schema({
     type: [String],
     default: []
   },
+  supplier: {
+    type: String,
+    default: '',
+    trim: true,
+    unique: true,
+    sparse: true // Allows multiple null/empty values but enforces uniqueness for non-empty values
+  },
   isActive: {
     type: Boolean,
     default: true

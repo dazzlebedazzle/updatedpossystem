@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { setAuthToken } from '@/lib/api-client';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -27,6 +28,11 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (response.ok) {
+        // Store JWT token in localStorage for Bearer authentication
+        if (data.jwtToken) {
+          setAuthToken(data.jwtToken);
+        }
+        
         // Redirect based on role
         if (data.user.role === 'superadmin') {
           router.push('/superadmin/dashboard');

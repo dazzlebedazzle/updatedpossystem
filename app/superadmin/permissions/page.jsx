@@ -90,7 +90,7 @@ export default function SuperAdminPermissions() {
       });
 
       if (response.ok) {
-        toast.success('Permissions updated successfully!');
+        toast.success('Permissions updated successfully! The user may need to log out and log back in to see the changes.');
         setShowModal(false);
         setSelectedUser(null);
         setUserPermissions([]);
@@ -218,11 +218,7 @@ export default function SuperAdminPermissions() {
 
                 {/* Module Permissions */}
                 {Object.entries(availablePermissions).map(([module, operations]) => {
-                  // Skip users module for non-superadmin roles
-                  if (selectedUser.role !== 'superadmin' && module === MODULES.USERS) return null;
-                  // Skip reports module for agents
-                  if (selectedUser.role === 'agent' && module === MODULES.REPORTS) return null;
-                  
+                  // Show all modules - superadmin can assign any permissions to any user
                   return (
                     <div key={module} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between mb-3">

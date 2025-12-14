@@ -1,22 +1,12 @@
 import { NextResponse } from 'next/server';
-import { productDB } from '@/lib/database';
+import { productDB, userDB } from '@/lib/database';
 import { hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
+import { getSessionFromRequest } from '@/lib/auth-helper';
 
 export async function GET(request) {
   try {
-    const sessionCookie = request.cookies.get('session');
-    let session = null;
-    
-    if (sessionCookie) {
-      try {
-        session = JSON.parse(sessionCookie.value);
-      } catch (e) {
-        return NextResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 }
-        );
-      }
-    }
+    // Get session from Bearer token or cookie
+    const session = await getSessionFromRequest(request);
     
     if (!session) {
       return NextResponse.json(
@@ -26,14 +16,55 @@ export async function GET(request) {
     }
     
     // Check READ permission for products
-    if (!hasPermission(session.permissions, MODULES.PRODUCTS, OPERATIONS.READ)) {
+    // Agents with agentToken can view products (filtered by their name matching supplier)
+    // even without explicit products:read permission
+    const isAgentWithToken = session.token === 'agentToken' && session.role === 'agent';
+    
+    if (!hasPermission(session.permissions, MODULES.PRODUCTS, OPERATIONS.READ) && !isAgentWithToken) {
       return NextResponse.json(
         { error: 'Permission denied: products:read' },
         { status: 403 }
       );
     }
     
-    const products = await productDB.findAll();
+    let products = await productDB.findAll();
+    
+    // Filter products based on user's token/name
+    // If user is an agent, show only products where product.supplier matches user.name
+    // Superadmins and admins see all products
+    if (session.token === 'agentToken' && session.role === 'agent') {
+      try {
+        // Get user details to get user name
+        const user = await userDB.findById(session.userId);
+        if (user) {
+          const userObj = user.toObject ? user.toObject() : user;
+          const userName = (userObj.name || '').trim();
+          
+          if (userName) {
+            // Filter products where product.supplier matches user.name
+            products = products.filter(product => {
+              const productObj = product.toObject ? product.toObject() : product;
+              const productSupplier = (productObj.supplier || '').trim();
+              // Match user.name with product.supplier (case-insensitive)
+              return productSupplier.toLowerCase() === userName.toLowerCase();
+            });
+          } else {
+            // Agent has no name, return empty array
+            products = [];
+          }
+        } else {
+          // Agent not found, return empty array
+          products = [];
+        }
+      } catch (error) {
+        console.error('Error filtering products by user name:', error);
+        // On error, return empty array for agents
+        if (session.role === 'agent') {
+          products = [];
+        }
+      }
+    }
+    
     return NextResponse.json({ products });
   } catch (error) {
     console.error('Get products error:', error);
@@ -46,19 +77,8 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const sessionCookie = request.cookies.get('session');
-    let session = null;
-    
-    if (sessionCookie) {
-      try {
-        session = JSON.parse(sessionCookie.value);
-      } catch (e) {
-        return NextResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 }
-        );
-      }
-    }
+    // Get session from Bearer token or cookie
+    const session = await getSessionFromRequest(request);
     
     if (!session) {
       return NextResponse.json(

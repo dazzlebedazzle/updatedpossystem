@@ -2,6 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
 
 export default function SuperAdminDashboard() {
   const [stats, setStats] = useState({
@@ -11,10 +23,20 @@ export default function SuperAdminDashboard() {
     totalRevenue: 0
   });
   const [loading, setLoading] = useState(true);
+  const [chartLoading, setChartLoading] = useState(true);
+  const [period, setPeriod] = useState('daily'); // daily, monthly, yearly
+  const [salesData, setSalesData] = useState([]);
+  const [revenueData, setRevenueData] = useState([]);
+  const [customersData, setCustomersData] = useState([]);
 
   useEffect(() => {
     fetchStats();
+    fetchChartData();
   }, []);
+
+  useEffect(() => {
+    fetchChartData();
+  }, [period]);
 
   const fetchStats = async () => {
     try {
@@ -43,6 +65,35 @@ export default function SuperAdminDashboard() {
     }
   };
 
+  const fetchChartData = async () => {
+    try {
+      setChartLoading(true);
+      const response = await fetch(`/api/dashboard/analytics?period=${period}`);
+      const data = await response.json();
+
+      setSalesData(data.sales || []);
+      setRevenueData(data.revenue || []);
+      setCustomersData(data.customers || []);
+    } catch (error) {
+      console.error('Error fetching chart data:', error);
+    } finally {
+      setChartLoading(false);
+    }
+  };
+
+  const formatDateLabel = (date) => {
+    if (period === 'daily') {
+      const d = new Date(date);
+      return `${d.getDate()}/${d.getMonth() + 1}`;
+    } else if (period === 'monthly') {
+      const [year, month] = date.split('-');
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${monthNames[parseInt(month) - 1]} ${year}`;
+    } else {
+      return date;
+    }
+  };
+
   return (
     <Layout userRole="superadmin">
       <div className="px-4 py-6 sm:px-0">
@@ -51,7 +102,7 @@ export default function SuperAdminDashboard() {
         {loading ? (
           <div>Loading...</div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
             <div className="bg-white overflow-hidden shadow rounded-lg">
               <div className="p-5">
                 <div className="flex items-center">
@@ -125,8 +176,152 @@ export default function SuperAdminDashboard() {
             </div>
           </div>
         )}
+
+        {/* Period Selector */}
+        <div className="mb-6 bg-white shadow rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">Chart Period</h2>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPeriod('daily')}
+                className={`px-4 py-2 rounded-lg font-medium transition ${
+                  period === 'daily'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Daily
+              </button>
+              <button
+                onClick={() => setPeriod('monthly')}
+                className={`px-4 py-2 rounded-lg font-medium transition ${
+                  period === 'monthly'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setPeriod('yearly')}
+                className={`px-4 py-2 rounded-lg font-medium transition ${
+                  period === 'yearly'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Yearly
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Charts Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Sales Chart */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Sales ({period.charAt(0).toUpperCase() + period.slice(1)})
+            </h3>
+            {chartLoading ? (
+              <div className="h-64 flex items-center justify-center text-gray-500">Loading chart data...</div>
+            ) : salesData.length === 0 ? (
+              <div className="h-64 flex items-center justify-center text-gray-500">No sales data available</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={salesData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={formatDateLabel}
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                  />
+                  <YAxis />
+                  <Tooltip
+                    labelFormatter={(label) => `Date: ${formatDateLabel(label)}`}
+                    formatter={(value) => [value, 'Sales']}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="sales"
+                    stroke="#4F46E5"
+                    strokeWidth={2}
+                    name="Number of Sales"
+                    dot={{ r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Revenue Chart */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Revenue ({period.charAt(0).toUpperCase() + period.slice(1)})
+            </h3>
+            {chartLoading ? (
+              <div className="h-64 flex items-center justify-center text-gray-500">Loading chart data...</div>
+            ) : revenueData.length === 0 ? (
+              <div className="h-64 flex items-center justify-center text-gray-500">No revenue data available</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={revenueData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={formatDateLabel}
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                  />
+                  <YAxis />
+                  <Tooltip
+                    labelFormatter={(label) => `Date: ${formatDateLabel(label)}`}
+                    formatter={(value) => [`₹${value.toFixed(2)}`, 'Revenue']}
+                  />
+                  <Legend />
+                  <Bar dataKey="revenue" fill="#10B981" name="Revenue (₹)" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Daily Customers Chart */}
+          {period === 'daily' && (
+            <div className="bg-white shadow rounded-lg p-6 lg:col-span-2">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Daily Total Customers</h3>
+              {chartLoading ? (
+                <div className="h-64 flex items-center justify-center text-gray-500">Loading chart data...</div>
+              ) : customersData.length === 0 ? (
+                <div className="h-64 flex items-center justify-center text-gray-500">No customer data available</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={customersData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={formatDateLabel}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis />
+                    <Tooltip
+                      labelFormatter={(label) => `Date: ${formatDateLabel(label)}`}
+                      formatter={(value) => [value, 'Customers']}
+                    />
+                    <Legend />
+                    <Bar dataKey="customers" fill="#F59E0B" name="Number of Customers" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </Layout>
   );
 }
-

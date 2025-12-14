@@ -41,7 +41,8 @@ export async function POST(request) {
         role: user.role,
         name: user.name,
         token: user.token
-      }
+      },
+      jwtToken: token // Include JWT token in response for Bearer authentication
     });
     
     // Set session cookie

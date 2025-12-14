@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { userDB } from '@/lib/database';
 import { hashPassword, getTokenByRole } from '@/lib/auth';
-import { getDefaultPermissions } from '@/lib/permissions';
+import { getDefaultPermissions, hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
 
 export async function GET(request) {
   try {
@@ -19,15 +19,31 @@ export async function GET(request) {
       }
     }
     
-    if (!session || !['superadmin', 'admin'].includes(session.role)) {
+    if (!session) {
       return NextResponse.json(
         { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Check READ permission for users
+    if (!hasPermission(session.permissions, MODULES.USERS, OPERATIONS.READ)) {
+      return NextResponse.json(
+        { error: 'Permission denied: users:read' },
         { status: 403 }
       );
     }
     
     const users = await userDB.findAll();
-    return NextResponse.json({ users });
+    // Ensure permissions are included in the response
+    const usersWithPermissions = users.map(user => {
+      const userObj = user.toObject ? user.toObject() : user;
+      return {
+        ...userObj,
+        permissions: userObj.permissions || []
+      };
+    });
+    return NextResponse.json({ users: usersWithPermissions });
   } catch (error) {
     console.error('Get users error:', error);
     return NextResponse.json(
@@ -60,13 +76,36 @@ export async function POST(request) {
       );
     }
     
-    const { email, password, name, role, permissions } = await request.json();
+    const { email, password, name, role, permissions, supplier } = await request.json();
     
     if (!email || !password || !name) {
       return NextResponse.json(
         { error: 'Email, password, and name are required' },
         { status: 400 }
       );
+    }
+    
+    // For agents, supplier is required and must be unique
+    if (role === 'agent') {
+      if (!supplier || supplier.trim() === '') {
+        return NextResponse.json(
+          { error: 'Supplier name is required for agents' },
+          { status: 400 }
+        );
+      }
+      
+      // Check if supplier name already exists (must be unique)
+      const users = await userDB.findAll();
+      const existingSupplier = users.find(u => 
+        u.supplier && u.supplier.toLowerCase().trim() === supplier.toLowerCase().trim()
+      );
+      
+      if (existingSupplier) {
+        return NextResponse.json(
+          { error: 'Supplier name already exists. Each supplier must be unique.' },
+          { status: 400 }
+        );
+      }
     }
     
     const existingUser = await userDB.findByEmail(email);
@@ -94,7 +133,8 @@ export async function POST(request) {
       name,
       role: role || 'agent',
       token: token,
-      permissions: userPermissions
+      permissions: userPermissions,
+      supplier: role === 'agent' && supplier ? supplier.trim() : ''
     });
     
     return NextResponse.json({

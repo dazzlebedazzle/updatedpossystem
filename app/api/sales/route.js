@@ -1,21 +1,12 @@
 import { NextResponse } from 'next/server';
 import { saleDB, productDB } from '@/lib/database';
+import { hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
+import { getSessionFromRequest } from '@/lib/auth-helper';
 
 export async function GET(request) {
   try {
-    const sessionCookie = request.cookies.get('session');
-    let session = null;
-    
-    if (sessionCookie) {
-      try {
-        session = JSON.parse(sessionCookie.value);
-      } catch (e) {
-        return NextResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 }
-        );
-      }
-    }
+    // Get session from Bearer token or cookie
+    const session = await getSessionFromRequest(request);
     
     if (!session) {
       return NextResponse.json(
@@ -23,16 +14,76 @@ export async function GET(request) {
         { status: 401 }
       );
     }
+
+    // Check READ permission for sales (for reports) or SALES module
+    // If user has reports:read, they can see all sales
+    // If user only has sales:read, they can see their own sales
+    // Agents with agentToken can always see their own sales (for reports page)
+    const hasReportsRead = hasPermission(session.permissions, MODULES.REPORTS, OPERATIONS.READ);
+    const hasSalesRead = hasPermission(session.permissions, MODULES.SALES, OPERATIONS.READ);
+    const isAgentWithToken = session.token === 'agentToken' && session.role === 'agent';
     
+    // Allow agents with agentToken to view their own sales even without explicit permissions
+    if (!hasReportsRead && !hasSalesRead && !isAgentWithToken) {
+      return NextResponse.json(
+        { error: 'Permission denied: reports:read or sales:read required' },
+        { status: 403 }
+      );
+    }
+    
+    // Fetch all sales from database using saleModel
     let sales = await saleDB.findAll();
     
-    // Agents can only see their own sales
-    if (session.role === 'agent') {
-      sales = sales.filter(s => {
-        const saleUserId = s.userId?._id?.toString() || s.userId?.toString() || s.userId;
-        const sessionUserId = session.userId?.toString();
-        return saleUserId === sessionUserId;
-      });
+    // Convert Mongoose documents to plain JSON objects
+    sales = sales.map(sale => {
+      const saleObj = sale.toObject ? sale.toObject() : sale;
+      return {
+        _id: saleObj._id?.toString() || saleObj.id,
+        id: saleObj._id?.toString() || saleObj.id,
+        userId: saleObj.userId?._id?.toString() || saleObj.userId?.toString() || saleObj.userId,
+        customerId: saleObj.customerId?._id?.toString() || saleObj.customerId?.toString() || saleObj.customerId || null,
+        customerName: saleObj.customerName || null,
+        customerMobile: saleObj.customerMobile || null,
+        customerAddress: saleObj.customerAddress || null,
+        items: saleObj.items || [],
+        total: saleObj.total || 0,
+        paymentMethod: saleObj.paymentMethod || 'cash',
+        status: saleObj.status || 'completed',
+        createdAt: saleObj.createdAt || saleObj.date || new Date(),
+        updatedAt: saleObj.updatedAt || saleObj.createdAt || new Date()
+      };
+    });
+    
+    // Filter sales based on user's token
+    // If user is an agent (agentToken), they can ONLY see their own sales
+    // Agents with agentToken should NEVER see other agents' sales, regardless of permissions
+    const sessionUserId = session.userId?.toString();
+    
+    if (session.token === 'agentToken' && session.role === 'agent') {
+      // Agent with agentToken can ONLY see their own sales
+      // This is enforced regardless of permissions (reports:read, etc.)
+      // This ensures data isolation for agents
+      if (sessionUserId) {
+        sales = sales.filter(s => {
+          const saleUserId = s.userId?.toString();
+          // Ensure both are strings and match exactly
+          return saleUserId && sessionUserId && saleUserId === sessionUserId;
+        });
+      } else {
+        // If no userId found for agent, return empty array
+        console.warn('Agent token found but no userId in session');
+        sales = [];
+      }
+    } else if (hasSalesRead && !hasReportsRead) {
+      // User with sales:read but not reports:read can only see their own sales
+      if (sessionUserId) {
+        sales = sales.filter(s => {
+          const saleUserId = s.userId?.toString();
+          return saleUserId && sessionUserId && saleUserId === sessionUserId;
+        });
+      } else {
+        sales = [];
+      }
     }
     
     return NextResponse.json({ sales });
@@ -47,19 +98,8 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const sessionCookie = request.cookies.get('session');
-    let session = null;
-    
-    if (sessionCookie) {
-      try {
-        session = JSON.parse(sessionCookie.value);
-      } catch (e) {
-        return NextResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 }
-        );
-      }
-    }
+    // Get session from Bearer token or cookie
+    const session = await getSessionFromRequest(request);
     
     if (!session) {
       return NextResponse.json(

@@ -1,72 +1,374 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Layout from '@/components/Layout';
+import jsPDF from 'jspdf';
 
 export default function SuperAdminReports() {
-  const [reports, setReports] = useState({
-    totalRevenue: 0,
-    totalSales: 0,
-    totalProducts: 0,
-    totalCustomers: 0
-  });
+  const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     fetchReports();
   }, []);
 
+  // Fetch sales data from database via API (saleModel)
   const fetchReports = async () => {
     try {
-      const [salesRes, productsRes, customersRes] = await Promise.all([
-        fetch('/api/sales'),
-        fetch('/api/products'),
-        fetch('/api/customers')
-      ]);
-
-      const salesData = await salesRes.json();
-      const productsData = await productsRes.json();
-      const customersData = await customersRes.json();
-
-      const revenue = salesData.sales.reduce((sum, sale) => sum + (sale.total || 0), 0);
-
-      setReports({
-        totalRevenue: revenue,
-        totalSales: salesData.sales.length,
-        totalProducts: productsData.products.length,
-        totalCustomers: customersData.customers.length
-      });
+      // Fetch all sales from database using saleModel through /api/sales endpoint
+      const response = await fetch('/api/sales');
+      const data = await response.json();
+      // Set sales data from database (saleModel)
+      setSales(data.sales || []);
     } catch (error) {
-      console.error('Error fetching reports:', error);
+      console.error('Error fetching reports from database:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  // Filter sales by date range
+  const filteredSales = useMemo(() => {
+    if (!startDate && !endDate) {
+      return sales;
+    }
+
+    return sales.filter(sale => {
+      const saleDate = new Date(sale.createdAt || sale.date);
+      saleDate.setHours(0, 0, 0, 0);
+
+      if (startDate && endDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        return saleDate >= start && saleDate <= end;
+      } else if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        return saleDate >= start;
+      } else if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        return saleDate <= end;
+      }
+      return true;
+    });
+  }, [sales, startDate, endDate]);
+
+  // Calculate summary statistics
+  const summary = useMemo(() => {
+    const totalRevenue = filteredSales.reduce((sum, sale) => sum + (sale.total || 0), 0);
+    const totalSales = filteredSales.length;
+    const totalItems = filteredSales.reduce((sum, sale) => sum + (sale.items?.length || 0), 0);
+    
+    return {
+      totalRevenue,
+      totalSales,
+      totalItems
+    };
+  }, [filteredSales]);
+
+  // Download CSV
+  const downloadCSV = () => {
+    const headers = ['Sale ID', 'Date', 'Customer Name', 'Customer Mobile', 'Items', 'Total', 'Payment Method'];
+    const rows = filteredSales.map(sale => {
+      const date = new Date(sale.createdAt || sale.date).toLocaleDateString();
+      const itemsCount = sale.items?.length || 0;
+      const itemsList = sale.items?.map(item => `${item.name} (${item.quantity}${item.unit === 'kg' ? 'g' : 'pcs'})`).join('; ') || '';
+      
+      return [
+        sale._id || sale.id || '',
+        date,
+        sale.customerName || '',
+        sale.customerMobile || '',
+        itemsList || itemsCount.toString(),
+        sale.total?.toFixed(2) || '0.00',
+        sale.paymentMethod || ''
+      ];
+    });
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    
+    const dateRange = startDate && endDate 
+      ? `${startDate}_to_${endDate}` 
+      : startDate 
+        ? `from_${startDate}` 
+        : endDate 
+          ? `until_${endDate}` 
+          : 'all';
+    
+    link.setAttribute('download', `sales_report_${dateRange}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Download PDF
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    let yPosition = 20;
+    const lineHeight = 7;
+    const margin = 15;
+    const tableStartY = 50;
+
+    // Title
+    doc.setFontSize(18);
+    doc.text('Sales Report', margin, yPosition);
+    yPosition += 10;
+
+    // Date Range
+    doc.setFontSize(12);
+    if (startDate && endDate) {
+      doc.text(`Date Range: ${startDate} to ${endDate}`, margin, yPosition);
+    } else if (startDate) {
+      doc.text(`From: ${startDate}`, margin, yPosition);
+    } else if (endDate) {
+      doc.text(`Until: ${endDate}`, margin, yPosition);
+    } else {
+      doc.text('All Sales', margin, yPosition);
+    }
+    yPosition += 5;
+
+    // Summary
+    doc.setFontSize(10);
+    doc.text(`Total Sales: ${summary.totalSales}`, margin, yPosition);
+    yPosition += lineHeight;
+    doc.text(`Total Revenue: ₹${summary.totalRevenue.toFixed(2)}`, margin, yPosition);
+    yPosition += lineHeight;
+    doc.text(`Total Items Sold: ${summary.totalItems}`, margin, yPosition);
+    yPosition += 10;
+
+    // Table Headers
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'bold');
+    const headers = ['ID', 'Date', 'Customer', 'Items', 'Total', 'Payment'];
+    const colWidths = [25, 30, 45, 30, 25, 30];
+    let xPosition = margin;
+    
+    headers.forEach((header, index) => {
+      doc.text(header, xPosition, yPosition);
+      xPosition += colWidths[index];
+    });
+    
+    yPosition += lineHeight;
+    doc.setLineWidth(0.5);
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 3;
+
+    // Table Rows
+    doc.setFont(undefined, 'normal');
+    filteredSales.forEach((sale, index) => {
+      // Check if we need a new page
+      if (yPosition > pageHeight - 30) {
+        doc.addPage();
+        yPosition = 20;
+      }
+
+      const saleId = (sale._id || sale.id || '').toString().substring(0, 8);
+      const date = new Date(sale.createdAt || sale.date).toLocaleDateString();
+      const customer = (sale.customerName || 'N/A').substring(0, 20);
+      const itemsCount = sale.items?.length || 0;
+      const total = `₹${(sale.total || 0).toFixed(2)}`;
+      const payment = (sale.paymentMethod || '').substring(0, 10);
+
+      xPosition = margin;
+      doc.text(saleId, xPosition, yPosition);
+      xPosition += colWidths[0];
+      doc.text(date, xPosition, yPosition);
+      xPosition += colWidths[1];
+      doc.text(customer, xPosition, yPosition);
+      xPosition += colWidths[2];
+      doc.text(itemsCount.toString(), xPosition, yPosition);
+      xPosition += colWidths[3];
+      doc.text(total, xPosition, yPosition);
+      xPosition += colWidths[4];
+      doc.text(payment, xPosition, yPosition);
+
+      yPosition += lineHeight;
+    });
+
+    // Footer
+    const totalPages = doc.internal.pages.length - 1;
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.text(
+        `Page ${i} of ${totalPages} - Generated on ${new Date().toLocaleDateString()}`,
+        pageWidth / 2,
+        pageHeight - 10,
+        { align: 'center' }
+      );
+    }
+
+    // Save PDF
+    const dateRange = startDate && endDate 
+      ? `${startDate}_to_${endDate}` 
+      : startDate 
+        ? `from_${startDate}` 
+        : endDate 
+          ? `until_${endDate}` 
+          : 'all';
+    
+    doc.save(`sales_report_${dateRange}_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  // Set default date range to today
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    setStartDate(today);
+    setEndDate(today);
+  }, []);
+
   return (
     <Layout userRole="superadmin">
       <div className="px-4 py-6 sm:px-0">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Reports</h1>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+          <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={downloadCSV}
+              disabled={filteredSales.length === 0}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            >
+              📥 Download CSV
+            </button>
+            <button
+              onClick={downloadPDF}
+              disabled={filteredSales.length === 0}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            >
+              📄 Download PDF
+            </button>
+          </div>
+        </div>
 
+        {/* Date Filters */}
+        <div className="bg-white shadow rounded-lg p-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                From Date
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                To Date
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={() => {
+                  setStartDate('');
+                  setEndDate('');
+                }}
+                className="w-full bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 font-medium"
+              >
+                Clear Filters
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-6">
+          <div className="bg-white overflow-hidden shadow rounded-lg p-6">
+            <h3 className="text-sm font-medium text-gray-500">Total Revenue</h3>
+            <p className="mt-2 text-3xl font-bold text-gray-900">₹{summary.totalRevenue.toFixed(2)}</p>
+          </div>
+          <div className="bg-white overflow-hidden shadow rounded-lg p-6">
+            <h3 className="text-sm font-medium text-gray-500">Total Sales</h3>
+            <p className="mt-2 text-3xl font-bold text-gray-900">{summary.totalSales}</p>
+          </div>
+          <div className="bg-white overflow-hidden shadow rounded-lg p-6">
+            <h3 className="text-sm font-medium text-gray-500">Total Items Sold</h3>
+            <p className="mt-2 text-3xl font-bold text-gray-900">{summary.totalItems}</p>
+          </div>
+        </div>
+
+        {/* Sales Table */}
         {loading ? (
-          <div>Loading...</div>
+          <div className="bg-white shadow rounded-lg p-8 text-center">
+            <div className="text-gray-500">Loading...</div>
+          </div>
+        ) : filteredSales.length === 0 ? (
+          <div className="bg-white shadow rounded-lg p-8 text-center">
+            <div className="text-gray-500">No sales found for the selected date range.</div>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="bg-white overflow-hidden shadow rounded-lg p-6">
-              <h3 className="text-sm font-medium text-gray-500">Total Revenue</h3>
-              <p className="mt-2 text-3xl font-bold text-gray-900">₹{reports.totalRevenue.toFixed(2)}</p>
-            </div>
-            <div className="bg-white overflow-hidden shadow rounded-lg p-6">
-              <h3 className="text-sm font-medium text-gray-500">Total Sales</h3>
-              <p className="mt-2 text-3xl font-bold text-gray-900">{reports.totalSales}</p>
-            </div>
-            <div className="bg-white overflow-hidden shadow rounded-lg p-6">
-              <h3 className="text-sm font-medium text-gray-500">Total Products</h3>
-              <p className="mt-2 text-3xl font-bold text-gray-900">{reports.totalProducts}</p>
-            </div>
-            <div className="bg-white overflow-hidden shadow rounded-lg p-6">
-              <h3 className="text-sm font-medium text-gray-500">Total Customers</h3>
-              <p className="mt-2 text-3xl font-bold text-gray-900">{reports.totalCustomers}</p>
+          <div className="bg-white shadow overflow-hidden sm:rounded-md">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sale ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer Mobile</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredSales.map((sale) => (
+                    <tr key={sale._id || sale.id || `sale-${Math.random()}`}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {(sale._id || sale.id || '').toString().substring(0, 8)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(sale.createdAt || sale.date).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {sale.customerName || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {sale.customerMobile || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        <div className="max-w-xs">
+                          {sale.items?.map((item, index) => (
+                            <div key={index} className="text-xs">
+                              {item.name} ({item.quantity}{item.unit === 'kg' ? 'g' : 'pcs'})
+                            </div>
+                          )) || '0 items'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        ₹{sale.total?.toFixed(2) || '0.00'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {sale.paymentMethod || 'N/A'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -74,4 +376,3 @@ export default function SuperAdminReports() {
     </Layout>
   );
 }
-
