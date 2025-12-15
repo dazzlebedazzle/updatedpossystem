@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { userDB } from '@/lib/database';
 import { createSession, comparePassword } from '@/lib/auth';
 
+// Mark this route as dynamic to prevent build-time analysis
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function POST(request) {
   try {
     const { email, password } = await request.json();

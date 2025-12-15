@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth-helper';
 import { userDB } from '@/lib/database';
 
+// Mark this route as dynamic to prevent build-time analysis
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function GET(request) {
   try {
     // Get session from Bearer token or cookie

@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 
+// Mark this route as dynamic to prevent build-time analysis
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function POST(request) {
   try {
     const response = NextResponse.json({ 
