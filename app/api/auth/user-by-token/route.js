@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { userDB } from '@/lib/database';
 import { getBearerToken } from '@/lib/auth-helper';
 
+// Mark this route as dynamic to prevent build-time analysis
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function GET(request) {
   try {
     // Get token from Bearer header, cookie, or query parameter

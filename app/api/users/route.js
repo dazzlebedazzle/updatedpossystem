@@ -3,6 +3,10 @@ import { userDB } from '@/lib/database';
 import { hashPassword, getTokenByRole } from '@/lib/auth';
 import { getDefaultPermissions, hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
 
+// Mark this route as dynamic to prevent build-time analysis
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function GET(request) {
   try {
     const sessionCookie = request.cookies.get('session');

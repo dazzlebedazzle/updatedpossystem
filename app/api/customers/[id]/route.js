@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { customerDB } from '@/lib/database';
 
+// Mark this route as dynamic to prevent build-time analysis
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function GET(request, { params }) {
   try {
     const { id } = await params;

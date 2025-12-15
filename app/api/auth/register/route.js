@@ -3,6 +3,10 @@ import { userDB } from '@/lib/database';
 import { createSession, hashPassword, getTokenByRole } from '@/lib/auth';
 import { getDefaultPermissions } from '@/lib/permissions';
 
+// Mark this route as dynamic to prevent build-time analysis
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function POST(request) {
   try {
     const { email, password, name, role } = await request.json();
