@@ -1,51 +1,21 @@
 import { NextResponse } from 'next/server';
-import { checkRateLimit, getRateLimitConfig } from '@/lib/rate-limiter';
 import { validateRequestSize, addSecurityHeaders } from '@/lib/request-protection';
 import { safeJsonParse, sanitizeSession } from '@/lib/security-utils';
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
   
-  // Apply rate limiting and request protection to all API routes
+  // Apply request protection to all API routes (rate limiting disabled)
   if (pathname.startsWith('/api/')) {
-    // Check request size
+    // Check request size (still enforced for security)
     const sizeValidation = validateRequestSize(request, pathname);
     if (sizeValidation) {
       return addSecurityHeaders(sizeValidation);
     }
     
-    // Check rate limit (now async)
-    const rateLimitResult = await checkRateLimit(request, pathname);
-    
-    // Get rate limit config for this endpoint
-    const rateLimitConfig = getRateLimitConfig(pathname);
-    
-    if (!rateLimitResult.allowed) {
-      // Create response with rate limit headers
-      const response = NextResponse.json(
-        {
-          error: 'Too many requests',
-          message: 'Rate limit exceeded. Please try again later.',
-          retryAfter: rateLimitResult.retryAfter,
-        },
-        { status: 429 }
-      );
-      
-      // Add rate limit headers
-      response.headers.set('X-RateLimit-Limit', rateLimitConfig.maxRequests.toString());
-      response.headers.set('X-RateLimit-Remaining', '0');
-      response.headers.set('X-RateLimit-Reset', new Date(rateLimitResult.resetTime).toISOString());
-      response.headers.set('Retry-After', rateLimitResult.retryAfter.toString());
-      
-      return addSecurityHeaders(response);
-    }
-    
-    // Add rate limit info headers for allowed requests
+    // Rate limiting removed - all requests allowed
+    // Add security headers to all API responses
     const response = NextResponse.next();
-    response.headers.set('X-RateLimit-Limit', rateLimitConfig.maxRequests.toString());
-    response.headers.set('X-RateLimit-Remaining', rateLimitResult.remaining.toString());
-    response.headers.set('X-RateLimit-Reset', new Date(rateLimitResult.resetTime).toISOString());
-    
     return addSecurityHeaders(response);
   }
   
