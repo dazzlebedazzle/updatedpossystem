@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/rate-limiter';
 import { validateRequestSize, addSecurityHeaders } from '@/lib/request-protection';
+import { safeJsonParse, sanitizeSession } from '@/lib/security-utils';
 
-export function middleware(request) {
+export async function middleware(request) {
   const { pathname } = request.nextUrl;
   
   // Apply rate limiting and request protection to all API routes
@@ -13,8 +14,8 @@ export function middleware(request) {
       return addSecurityHeaders(sizeValidation);
     }
     
-    // Check rate limit
-    const rateLimitResult = checkRateLimit(request, pathname);
+    // Check rate limit (now async)
+    const rateLimitResult = await checkRateLimit(request, pathname);
     
     if (!rateLimitResult.allowed) {
       // Create response with rate limit headers
@@ -45,15 +46,16 @@ export function middleware(request) {
     return addSecurityHeaders(response);
   }
   
-  // Get session from cookies (in production, use proper session management)
+  // Get session from cookies (secure parsing)
   const sessionCookie = request.cookies.get('session');
   let session = null;
   
   if (sessionCookie) {
-    try {
-      session = JSON.parse(sessionCookie.value);
-    } catch (e) {
-      session = null;
+    // Use safe JSON parsing with size limits
+    const parsed = safeJsonParse(sessionCookie.value, 10 * 1024); // 10KB max
+    if (parsed) {
+      // Sanitize and validate session data
+      session = sanitizeSession(parsed);
     }
   }
   

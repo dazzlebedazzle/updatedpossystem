@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { userDB } from '@/lib/database';
 import { createSession, hashPassword, getTokenByRole } from '@/lib/auth';
 import { getDefaultPermissions } from '@/lib/permissions';
+import { safeJsonParse, sanitizeSession } from '@/lib/security-utils';
 
 // Mark this route as dynamic to prevent build-time analysis
 export const dynamic = 'force-dynamic';

@@ -64,9 +64,13 @@ export async function PUT(request, { params }) {
     let session = null;
     
     if (sessionCookie) {
-      try {
-        session = JSON.parse(sessionCookie.value);
-      } catch (e) {
+      // Use safe JSON parsing with size limits
+      const parsed = safeJsonParse(sessionCookie.value, 10 * 1024); // 10KB max
+      if (parsed) {
+        session = sanitizeSession(parsed);
+      }
+      
+      if (!session) {
         return NextResponse.json(
           { error: 'Unauthorized' },
           { status: 401 }
@@ -116,9 +120,13 @@ export async function DELETE(request, { params }) {
     let session = null;
     
     if (sessionCookie) {
-      try {
-        session = JSON.parse(sessionCookie.value);
-      } catch (e) {
+      // Use safe JSON parsing with size limits
+      const parsed = safeJsonParse(sessionCookie.value, 10 * 1024); // 10KB max
+      if (parsed) {
+        session = sanitizeSession(parsed);
+      }
+      
+      if (!session) {
         return NextResponse.json(
           { error: 'Unauthorized' },
           { status: 401 }

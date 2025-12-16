@@ -154,13 +154,47 @@ import { clearAllRateLimits } from '@/lib/rate-limiter';
 clearAllRateLimits(); // Use with caution
 ```
 
+## Security Features
+
+### IP Spoofing Protection
+- Only trusts configured proxy headers
+- Validates IP format (IPv4/IPv6)
+- Falls back to connection IP when headers are untrusted
+
+### Memory Protection
+- Maximum store size limit (100,000 IPs)
+- Automatic cleanup of oldest entries
+- Prevents memory exhaustion attacks
+
+### Distributed Attack Protection
+- Global rate limiting (10,000 requests/minute across all IPs)
+- Prevents botnet attacks
+- Configurable limits
+
+### Race Condition Protection
+- Async lock mechanism
+- Thread-safe rate limit checks
+- Prevents concurrent bypass attempts
+
+### JSON DoS Protection
+- Safe JSON parsing with size limits
+- Depth checking for nested structures
+- Applied to all cookie parsing
+
+### Session Security
+- Session data sanitization
+- Field validation and type checking
+- Length limits on all fields
+
 ## Production Considerations
 
 ### Memory Management
 
 - The rate limiter uses an in-memory store (Map)
+- Maximum size limit prevents memory exhaustion (100,000 IPs)
 - Automatic cleanup runs every hour to prevent memory leaks
 - Old entries (>2 hours) are automatically removed
+- Oldest entries are removed when limit is reached
 
 ### Scaling
 
@@ -170,6 +204,7 @@ For production with multiple server instances, consider:
 2. **Load balancer rate limiting**: Configure rate limiting at the load balancer level
 3. **CDN protection**: Use Cloudflare or similar CDN for DDoS protection
 4. **WAF (Web Application Firewall)**: Additional layer of protection
+5. **Configure trusted proxy headers**: Set `TRUSTED_PROXY_HEADER` environment variable
 
 ### Recommended Production Setup
 
