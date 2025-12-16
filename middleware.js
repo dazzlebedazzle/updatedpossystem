@@ -1,7 +1,49 @@
 import { NextResponse } from 'next/server';
+import { checkRateLimit } from '@/lib/rate-limiter';
+import { validateRequestSize, addSecurityHeaders } from '@/lib/request-protection';
 
 export function middleware(request) {
   const { pathname } = request.nextUrl;
+  
+  // Apply rate limiting and request protection to all API routes
+  if (pathname.startsWith('/api/')) {
+    // Check request size
+    const sizeValidation = validateRequestSize(request, pathname);
+    if (sizeValidation) {
+      return addSecurityHeaders(sizeValidation);
+    }
+    
+    // Check rate limit
+    const rateLimitResult = checkRateLimit(request, pathname);
+    
+    if (!rateLimitResult.allowed) {
+      // Create response with rate limit headers
+      const response = NextResponse.json(
+        {
+          error: 'Too many requests',
+          message: 'Rate limit exceeded. Please try again later.',
+          retryAfter: rateLimitResult.retryAfter,
+        },
+        { status: 429 }
+      );
+      
+      // Add rate limit headers
+      response.headers.set('X-RateLimit-Limit', '60');
+      response.headers.set('X-RateLimit-Remaining', '0');
+      response.headers.set('X-RateLimit-Reset', new Date(rateLimitResult.resetTime).toISOString());
+      response.headers.set('Retry-After', rateLimitResult.retryAfter.toString());
+      
+      return addSecurityHeaders(response);
+    }
+    
+    // Add rate limit info headers for allowed requests
+    const response = NextResponse.next();
+    response.headers.set('X-RateLimit-Limit', '60');
+    response.headers.set('X-RateLimit-Remaining', rateLimitResult.remaining.toString());
+    response.headers.set('X-RateLimit-Reset', new Date(rateLimitResult.resetTime).toISOString());
+    
+    return addSecurityHeaders(response);
+  }
   
   // Get session from cookies (in production, use proper session management)
   const sessionCookie = request.cookies.get('session');
@@ -55,12 +97,21 @@ export function middleware(request) {
     }
   }
   
-  return NextResponse.next();
+  // Add security headers to all responses
+  const response = NextResponse.next();
+  return addSecurityHeaders(response);
 }
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public files (files in public folder)
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)',
   ],
 };
 
