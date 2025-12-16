@@ -116,9 +116,9 @@ export default function SuperAdminPermissions() {
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">Users & Their Permissions</h3>
-              <p className="mt-1 text-sm text-gray-500">Manage CRUD permissions for each user</p>
+              <p className="mt-1 text-sm text-gray-600">Manage CRUD permissions for each user</p>
             </div>
-            <ul className="divide-y divide-gray-200">
+            <ul className="divide-y divide-gray-800">
               {users.map((user) => {
                 const userId = user._id || user.id;
                 const permissions = user.permissions || [];
@@ -134,12 +134,12 @@ export default function SuperAdminPermissions() {
                             <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               user.role === 'superadmin' ? 'bg-purple-100 text-purple-800' :
                               user.role === 'admin' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
+                              'bg-white text-gray-800'
                             }`}>
                               {user.role}
                             </span>
                           </div>
-                          <p className="mt-1 text-sm text-gray-500">{user.email}</p>
+                          <p className="mt-1 text-sm text-gray-600">{user.email}</p>
                           <div className="mt-2">
                             {hasAllPerms ? (
                               <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
@@ -150,13 +150,13 @@ export default function SuperAdminPermissions() {
                                 {permissions.slice(0, 5).map((perm, idx) => (
                                   <span
                                     key={idx}
-                                    className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800"
+                                    className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-white text-gray-800"
                                   >
                                     {perm}
                                   </span>
                                 ))}
                                 {permissions.length > 5 && (
-                                  <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                  <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-white text-gray-800">
                                     +{permissions.length - 5} more
                                   </span>
                                 )}
@@ -181,14 +181,14 @@ export default function SuperAdminPermissions() {
 
         {/* Permissions Modal */}
         {showModal && selectedUser && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-white bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
             <div className="relative mx-auto p-6 border w-full max-w-3xl shadow-lg rounded-lg bg-white max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <div>
                   <h3 className="text-xl font-bold text-gray-900">
                     Edit Permissions - {selectedUser.name}
                   </h3>
-                  <p className="text-sm text-gray-500 mt-1">{selectedUser.email} ({selectedUser.role})</p>
+                  <p className="text-sm text-gray-600 mt-1">{selectedUser.email} ({selectedUser.role})</p>
                 </div>
                 <button
                   onClick={() => {
@@ -196,7 +196,7 @@ export default function SuperAdminPermissions() {
                     setSelectedUser(null);
                     setUserPermissions([]);
                   }}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="text-gray-800 hover:text-gray-800 text-2xl"
                 >
                   ×
                 </button>
@@ -204,13 +204,13 @@ export default function SuperAdminPermissions() {
 
               <div className="space-y-4">
                 {/* Select All Option */}
-                <div className="border rounded-lg p-3 bg-gray-50">
+                <div className="border rounded-lg p-3 bg-white">
                   <label className="flex items-center space-x-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={userPermissions.includes('all')}
                       onChange={handleSelectAll}
-                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-5 h-5"
+                      className="rounded border-gray-200 text-indigo-600 focus:ring-indigo-500 w-5 h-5"
                     />
                     <span className="text-sm font-semibold text-gray-900">All Permissions (Superadmin Access)</span>
                   </label>
@@ -238,7 +238,7 @@ export default function SuperAdminPermissions() {
                             className={`flex items-center space-x-2 cursor-pointer p-2 rounded border transition ${
                               hasPermission(module, operation)
                                 ? 'bg-indigo-50 border-indigo-300'
-                                : 'bg-white border-gray-200 hover:bg-gray-50'
+                                : 'bg-white border-gray-200 hover:bg-white'
                             }`}
                           >
                             <input
@@ -246,9 +246,9 @@ export default function SuperAdminPermissions() {
                               checked={hasPermission(module, operation)}
                               onChange={() => handlePermissionToggle(module, operation)}
                               disabled={userPermissions.includes('all')}
-                              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                              className="rounded border-gray-200 text-indigo-600 focus:ring-indigo-500"
                             />
-                            <span className="text-xs text-gray-700 capitalize font-medium">{operation}</span>
+                            <span className="text-xs text-gray-800 capitalize font-medium">{operation}</span>
                           </label>
                         ))}
                       </div>
@@ -265,7 +265,7 @@ export default function SuperAdminPermissions() {
                     setSelectedUser(null);
                     setUserPermissions([]);
                   }}
-                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                  className="px-4 py-2 bg-white text-gray-800 rounded-lg hover:bg-white transition"
                 >
                   Cancel
                 </button>

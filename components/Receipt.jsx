@@ -480,7 +480,7 @@ export default function Receipt({ saleData, onClose }) {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3 p-4 bg-gray-50 border-t">
+          <div className="flex gap-3 p-4 bg-white border-t">
             {!isMobile ? (
               <button
                 onClick={handlePrint}
@@ -513,7 +513,7 @@ export default function Receipt({ saleData, onClose }) {
             </button>
             <button
               onClick={onClose}
-              className="flex-1 bg-gray-200 text-gray-700 py-2.5 px-4 rounded-lg hover:bg-gray-300 font-medium transition"
+              className="flex-1 bg-white text-gray-800 py-2.5 px-4 rounded-lg hover:bg-white font-medium transition"
             >
               Close
             </button>

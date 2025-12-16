@@ -198,7 +198,7 @@ export default function UserReports() {
       <Layout userRole="user">
         <div className="px-4 py-6 sm:px-0">
           <div className="flex items-center justify-center py-12">
-            <div className="text-gray-500">Loading permissions...</div>
+            <div className="text-gray-600">Loading permissions...</div>
           </div>
         </div>
       </Layout>
@@ -235,7 +235,7 @@ export default function UserReports() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
             {userInfo && (
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-gray-800 mt-1">
                 Showing reports for: <span className="font-semibold">{userInfo.name}</span> ({userInfo.email})
               </p>
             )}
@@ -247,7 +247,7 @@ export default function UserReports() {
                 setLoading(true);
                 fetchReports();
               }}
-              className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
+              className="bg-white text-white px-4 py-2 rounded-lg hover:bg-white"
             >
               Refresh
             </button>
@@ -258,21 +258,21 @@ export default function UserReports() {
         <div className="bg-white p-4 rounded-lg shadow mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+              <label className="block text-sm font-medium text-gray-800 mb-1">Start Date</label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="block w-full border border-gray-300 rounded-md px-3 py-2"
+                className="block w-full border border-gray-200 rounded-md px-3 py-2"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+              <label className="block text-sm font-medium text-gray-800 mb-1">End Date</label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="block w-full border border-gray-300 rounded-md px-3 py-2"
+                className="block w-full border border-gray-200 rounded-md px-3 py-2"
               />
             </div>
             <div className="flex items-end gap-2">
@@ -281,7 +281,7 @@ export default function UserReports() {
                   setStartDate('');
                   setEndDate('');
                 }}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                className="px-4 py-2 bg-white text-gray-800 rounded hover:bg-white"
               >
                 Clear
               </button>
@@ -292,15 +292,15 @@ export default function UserReports() {
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-500 mb-2">Total Revenue</h3>
+            <h3 className="text-sm font-medium text-gray-600 mb-2">Total Revenue</h3>
             <p className="text-3xl font-bold text-indigo-600">₹{summary.totalRevenue.toFixed(2)}</p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-500 mb-2">Total Sales</h3>
+            <h3 className="text-sm font-medium text-gray-600 mb-2">Total Sales</h3>
             <p className="text-3xl font-bold text-green-600">{summary.totalSales}</p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-500 mb-2">Total Items Sold</h3>
+            <h3 className="text-sm font-medium text-gray-600 mb-2">Total Items Sold</h3>
             <p className="text-3xl font-bold text-blue-600">{summary.totalItems}</p>
           </div>
         </div>
@@ -324,42 +324,42 @@ export default function UserReports() {
         {/* Sales Table */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="text-gray-500">Loading...</div>
+            <div className="text-gray-600">Loading...</div>
           </div>
         ) : (
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-gray-800">
+                <thead className="bg-white">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer Mobile</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Customer Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Customer Mobile</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Items</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Total</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Payment Method</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-gray-800">
                   {filteredSales.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                      <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-600">
                         No sales found
                       </td>
                     </tr>
                   ) : (
                     filteredSales.map((sale) => (
                       <tr key={sale._id || sale.id || `sale-${Math.random()}`}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                           {new Date(sale.createdAt || sale.date).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{sale.customerName || 'N/A'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{sale.customerMobile || 'N/A'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{sale.customerMobile || 'N/A'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
                           {sale.items?.length || 0} item(s)
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">₹{parseFloat(sale.total || 0).toFixed(2)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{sale.paymentMethod || 'N/A'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{sale.paymentMethod || 'N/A'}</td>
                       </tr>
                     ))
                   )}

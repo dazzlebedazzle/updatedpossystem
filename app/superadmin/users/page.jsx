@@ -203,7 +203,7 @@ export default function SuperAdminUsers() {
           <div>Loading...</div>
         ) : (
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
-            <ul className="divide-y divide-gray-200">
+            <ul className="divide-y divide-gray-800">
               {users.map((user) => {
                 const userId = user._id || user.id;
                 return (
@@ -215,14 +215,14 @@ export default function SuperAdminUsers() {
                           <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                             user.role === 'superadmin' ? 'bg-purple-100 text-purple-800' :
                             user.role === 'admin' ? 'bg-blue-100 text-blue-800' :
-                            'bg-gray-100 text-gray-800'
+                            'bg-white text-gray-800'
                           }`}>
                             {user.role}
                           </span>
                         </div>
-                        <p className="mt-1 text-sm text-gray-500">{user.email}</p>
+                        <p className="mt-1 text-sm text-gray-600">{user.email}</p>
                         {user.supplier && (
-                          <p className="mt-1 text-xs text-gray-400">Supplier: {user.supplier}</p>
+                          <p className="mt-1 text-xs text-gray-800">Supplier: {user.supplier}</p>
                         )}
                       </div>
                       <div className="flex gap-2">
@@ -248,7 +248,7 @@ export default function SuperAdminUsers() {
         )}
 
         {showModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-white bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
             <div className="relative mx-auto p-6 border w-96 shadow-lg rounded-lg bg-white">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-gray-900">
@@ -260,36 +260,36 @@ export default function SuperAdminUsers() {
                     const defaultPerms = getDefaultPermissions('agent');
                     setFormData({ name: '', email: '', password: '', role: 'agent', supplier: '', permissions: defaultPerms });
                   }}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="text-gray-800 hover:text-gray-800 text-2xl"
                 >
                   ×
                 </button>
               </div>
               <form onSubmit={handleCreateUser} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">Name</label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
                     placeholder="Enter full name"
-                    className="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="block w-full border border-gray-200 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">Email</label>
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     required
                     placeholder="Enter email address"
-                    className="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="block w-full border border-gray-200 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">Password</label>
                   <input
                     type="password"
                     value={formData.password}
@@ -297,11 +297,11 @@ export default function SuperAdminUsers() {
                     required
                     placeholder="Enter password"
                     minLength={6}
-                    className="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="block w-full border border-gray-200 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">Role</label>
                   <div className="flex gap-2">
                     <button
                       type="button"
@@ -309,7 +309,7 @@ export default function SuperAdminUsers() {
                       className={`flex-1 px-4 py-2 rounded-md border-2 transition ${
                         formData.role === 'admin'
                           ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
-                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                          : 'border-gray-200 bg-white text-gray-800 hover:bg-white'
                       }`}
                     >
                       Admin
@@ -320,13 +320,13 @@ export default function SuperAdminUsers() {
                       className={`flex-1 px-4 py-2 rounded-md border-2 transition ${
                         formData.role === 'agent'
                           ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-medium'
-                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                          : 'border-gray-200 bg-white text-gray-800 hover:bg-white'
                       }`}
                     >
                       Agent
                     </button>
                   </div>
-                  <p className="mt-2 text-xs text-gray-500">
+                  <p className="mt-2 text-xs text-gray-600">
                     {formData.role === 'admin' 
                       ? 'Admin can manage products, sales, customers, and inventory'
                       : 'Agent can access POS interface and view personal sales'}
@@ -334,14 +334,14 @@ export default function SuperAdminUsers() {
                 </div>
                 {formData.role === 'agent' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-800 mb-1">
                       Supplier Name <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={formData.supplier}
                       onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
                       required
-                      className="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="block w-full border border-gray-200 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="">Select Supplier</option>
                       {suppliers.map((supplier) => (
@@ -350,7 +350,7 @@ export default function SuperAdminUsers() {
                         </option>
                       ))}
                     </select>
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="mt-1 text-xs text-gray-600">
                       Each supplier name must be unique. Select from the predefined list.
                     </p>
                   </div>
@@ -363,7 +363,7 @@ export default function SuperAdminUsers() {
                       const defaultPerms = getDefaultPermissions('agent');
                       setFormData({ name: '', email: '', password: '', role: 'agent', supplier: '', permissions: defaultPerms });
                     }}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                    className="px-4 py-2 bg-white text-gray-800 rounded-lg hover:bg-white transition"
                   >
                     Cancel
                   </button>
@@ -385,7 +385,7 @@ export default function SuperAdminUsers() {
 
         {/* Edit User Modal */}
         {showEditModal && editingUser && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-white bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
             <div className="relative mx-auto p-6 border w-96 shadow-lg rounded-lg bg-white max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-gray-900">
@@ -405,50 +405,50 @@ export default function SuperAdminUsers() {
                       permissions: []
                     });
                   }}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="text-gray-800 hover:text-gray-800 text-2xl"
                 >
                   ×
                 </button>
               </div>
               <form onSubmit={handleUpdateUser} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">Name</label>
                   <input
                     type="text"
                     value={editFormData.name}
                     onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
                     required
                     placeholder="Enter full name"
-                    className="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="block w-full border border-gray-200 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">Email</label>
                   <input
                     type="email"
                     value={editFormData.email}
                     onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
                     required
                     placeholder="Enter email address"
-                    className="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="block w-full border border-gray-200 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">New Password</label>
                   <input
                     type="password"
                     value={editFormData.newPassword}
                     onChange={(e) => setEditFormData({ ...editFormData, newPassword: e.target.value })}
                     placeholder="Leave blank to keep current password"
                     minLength={6}
-                    className="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="block w-full border border-gray-200 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p className="mt-1 text-xs text-gray-600">
                     Leave blank to keep current password. Minimum 6 characters if changing.
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                  <label className="block text-sm font-medium text-gray-800 mb-1">Role</label>
                   <div className="flex gap-2">
                     <button
                       type="button"
@@ -459,7 +459,7 @@ export default function SuperAdminUsers() {
                       className={`flex-1 px-4 py-2 rounded-md border-2 transition ${
                         editFormData.role === 'admin'
                           ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
-                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                          : 'border-gray-200 bg-white text-gray-800 hover:bg-white'
                       }`}
                     >
                       Admin
@@ -473,13 +473,13 @@ export default function SuperAdminUsers() {
                       className={`flex-1 px-4 py-2 rounded-md border-2 transition ${
                         editFormData.role === 'agent'
                           ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-medium'
-                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                          : 'border-gray-200 bg-white text-gray-800 hover:bg-white'
                       }`}
                     >
                       Agent
                     </button>
                   </div>
-                  <p className="mt-2 text-xs text-gray-500">
+                  <p className="mt-2 text-xs text-gray-600">
                     {editFormData.role === 'admin' 
                       ? 'Admin can manage products, sales, customers, and inventory'
                       : 'Agent can access POS interface and view personal sales'}
@@ -487,14 +487,14 @@ export default function SuperAdminUsers() {
                 </div>
                 {editFormData.role === 'agent' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-800 mb-1">
                       Supplier Name <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={editFormData.supplier}
                       onChange={(e) => setEditFormData({ ...editFormData, supplier: e.target.value })}
                       required
-                      className="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="block w-full border border-gray-200 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="">Select Supplier</option>
                       {suppliers.map((supplier) => (
@@ -503,7 +503,7 @@ export default function SuperAdminUsers() {
                         </option>
                       ))}
                     </select>
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="mt-1 text-xs text-gray-600">
                       Each supplier name must be unique. Select from the predefined list.
                     </p>
                   </div>
@@ -524,7 +524,7 @@ export default function SuperAdminUsers() {
                         permissions: []
                       });
                     }}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                    className="px-4 py-2 bg-white text-gray-800 rounded-lg hover:bg-white transition"
                   >
                     Cancel
                   </button>

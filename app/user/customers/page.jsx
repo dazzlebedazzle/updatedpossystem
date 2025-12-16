@@ -135,7 +135,7 @@ export default function UserCustomers() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Customers</h1>
             {agentInfo && (
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-gray-800 mt-1">
                 Showing customers for: <span className="font-semibold">{agentInfo.name}</span> ({agentInfo.email})
               </p>
             )}
@@ -146,7 +146,7 @@ export default function UserCustomers() {
                 setLoading(true);
                 fetchCustomers();
               }}
-              className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
+              className="bg-white text-white px-4 py-2 rounded-lg hover:bg-white"
             >
               Refresh
             </button>
@@ -166,19 +166,19 @@ export default function UserCustomers() {
         ) : (
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-gray-800">
+                <thead className="bg-white">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Phone</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Address</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-gray-800">
                   {customers.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
+                      <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-600">
                         No customers found
                       </td>
                     </tr>
@@ -186,9 +186,9 @@ export default function UserCustomers() {
                     customers.map((customer) => (
                       <tr key={customer._id || customer.id || `customer-${Math.random()}`}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{customer.name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.email}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.phone}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.address}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{customer.email}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{customer.phone}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{customer.address}</td>
                       </tr>
                     ))
                   )}
@@ -199,59 +199,59 @@ export default function UserCustomers() {
         )}
 
         {showModal && canCreate && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-white bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
             <div className="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-bold text-gray-900">Add New Customer</h3>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="text-gray-400 hover:text-gray-600 text-xl"
+                  className="text-gray-800 hover:text-gray-800 text-xl"
                 >
                   ×
                 </button>
               </div>
               <form onSubmit={handleCreateCustomer} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Name</label>
+                  <label className="block text-sm font-medium text-gray-800">Name</label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    className="mt-1 block w-full border border-gray-200 rounded-md px-3 py-2"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Email</label>
+                  <label className="block text-sm font-medium text-gray-800">Email</label>
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    className="mt-1 block w-full border border-gray-200 rounded-md px-3 py-2"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Phone</label>
+                  <label className="block text-sm font-medium text-gray-800">Phone</label>
                   <input
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    className="mt-1 block w-full border border-gray-200 rounded-md px-3 py-2"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Address</label>
+                  <label className="block text-sm font-medium text-gray-800">Address</label>
                   <textarea
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                    className="mt-1 block w-full border border-gray-200 rounded-md px-3 py-2"
                   />
                 </div>
                 <div className="flex justify-end space-x-3">
                   <button
                     type="button"
                     onClick={() => setShowModal(false)}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                    className="px-4 py-2 bg-white text-gray-800 rounded hover:bg-white"
                   >
                     Cancel
                   </button>

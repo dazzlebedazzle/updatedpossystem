@@ -36,7 +36,7 @@ export default function Toast({ message, type = 'success', isVisible, onClose })
         <span className="flex-1">{message}</span>
         <button
           onClick={onClose}
-          className="text-white hover:text-gray-200 font-bold text-lg"
+          className="text-white hover:text-gray-900 font-bold text-lg"
         >
           ×
         </button>

@@ -205,25 +205,25 @@ export default function UserProducts() {
         ) : (
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-gray-800">
+                <thead className="bg-white">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">EAN Code</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available Qty</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Qty</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Sold</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">EAN Code</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Product Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Unit</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Price</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Available Qty</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Total Qty</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Qty Sold</th>
                     {canDelete && (
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
                     )}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-gray-800">
                   {products.length === 0 ? (
                     <tr>
-                      <td colSpan={canDelete ? 8 : 7} className="px-6 py-4 text-center text-sm text-gray-500">
+                      <td colSpan={canDelete ? 8 : 7} className="px-6 py-4 text-center text-sm text-gray-600">
                         No products found
                       </td>
                     </tr>
@@ -232,13 +232,13 @@ export default function UserProducts() {
                       const productId = product._id || product.id;
                       return (
                         <tr key={productId}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.EAN_code}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{product.EAN_code}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.product_name}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.unit}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{parseFloat(product.price || 0).toFixed(2)}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{Math.round((product.qty || 0) - (product.qty_sold || 0))}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{Math.round(product.qty || 0)}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{Math.round(product.qty_sold || 0)}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{product.unit}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">₹{parseFloat(product.price || 0).toFixed(2)}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{Math.round((product.qty || 0) - (product.qty_sold || 0))}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{Math.round(product.qty || 0)}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{Math.round(product.qty_sold || 0)}</td>
                           {canDelete && (
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                               <button
@@ -260,7 +260,7 @@ export default function UserProducts() {
         )}
 
         {showModal && canCreate && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-white bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
             <div className="relative mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-bold text-gray-900">Add New Product</h3>
@@ -270,53 +270,53 @@ export default function UserProducts() {
                     setSelectedFile(null);
                     setImagePreview(null);
                   }}
-                  className="text-gray-400 hover:text-gray-600 text-xl"
+                  className="text-gray-800 hover:text-gray-800 text-xl"
                 >
                   ×
                 </button>
               </div>
               <form onSubmit={handleCreateProduct} className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">EAN Code *</label>
+                  <label className="block text-xs font-medium text-gray-800 mb-1">EAN Code *</label>
                   <input
                     type="number"
                     value={formData.EAN_code}
                     onChange={(e) => setFormData({ ...formData, EAN_code: e.target.value })}
                     required
-                    className="block w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Product Name *</label>
+                  <label className="block text-xs font-medium text-gray-800 mb-1">Product Name *</label>
                   <input
                     type="text"
                     value={formData.product_name}
                     onChange={(e) => setFormData({ ...formData, product_name: e.target.value })}
                     required
-                    className="block w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Unit</label>
+                  <label className="block text-xs font-medium text-gray-800 mb-1">Unit</label>
                   <input
                     type="text"
                     value={formData.unit}
                     onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                    className="block w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Price</label>
+                  <label className="block text-xs font-medium text-gray-800 mb-1">Price</label>
                   <input
                     type="number"
                     step="0.01"
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    className="block w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Quantity (Qty) *</label>
+                  <label className="block text-xs font-medium text-gray-800 mb-1">Quantity (Qty) *</label>
                   <input
                     type="number"
                     step="1"
@@ -324,43 +324,43 @@ export default function UserProducts() {
                     value={formData.qty}
                     onChange={(e) => setFormData({ ...formData, qty: e.target.value })}
                     required
-                    className="block w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Quantity Sold</label>
+                  <label className="block text-xs font-medium text-gray-800 mb-1">Quantity Sold</label>
                   <input
                     type="number"
                     step="1"
                     min="0"
                     value={formData.qty_sold}
                     onChange={(e) => setFormData({ ...formData, qty_sold: e.target.value })}
-                    className="block w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Supplier</label>
+                  <label className="block text-xs font-medium text-gray-800 mb-1">Supplier</label>
                   <input
                     type="text"
                     value={formData.supplier}
                     onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
-                    className="block w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Images</label>
+                  <label className="block text-xs font-medium text-gray-800 mb-1">Images</label>
                   <input
                     type="file"
                     accept="image/*"
                     onChange={handleFileChange}
-                    className="block w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
                   />
                   {imagePreview && (
                     <div className="mt-2">
                       <img 
                         src={imagePreview} 
                         alt="Preview" 
-                        className="w-20 h-20 object-cover rounded border border-gray-300"
+                        className="w-20 h-20 object-cover rounded border border-gray-200"
                       />
                     </div>
                   )}
@@ -370,37 +370,37 @@ export default function UserProducts() {
                       value={formData.images}
                       onChange={(e) => setFormData({ ...formData, images: e.target.value })}
                       placeholder="Or enter image filename"
-                      className="block w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm mt-2"
+                      className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm mt-2"
                     />
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Expiry Date</label>
+                  <label className="block text-xs font-medium text-gray-800 mb-1">Expiry Date</label>
                   <input
                     type="text"
                     value={formData.expiry_date}
                     onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
                     placeholder="MM/DD/YYYY"
-                    className="block w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Date Arrival</label>
+                  <label className="block text-xs font-medium text-gray-800 mb-1">Date Arrival</label>
                   <input
                     type="text"
                     value={formData.date_arrival}
                     onChange={(e) => setFormData({ ...formData, date_arrival: e.target.value })}
                     placeholder="MM/DD/YYYY"
-                    className="block w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
+                  <label className="block text-xs font-medium text-gray-800 mb-1">Category</label>
                   <input
                     type="text"
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="block w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
                   />
                 </div>
                 <div className="flex justify-end space-x-3 pt-3">
@@ -411,7 +411,7 @@ export default function UserProducts() {
                       setSelectedFile(null);
                       setImagePreview(null);
                     }}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                    className="px-4 py-2 bg-white text-gray-800 rounded hover:bg-white"
                   >
                     Cancel
                   </button>

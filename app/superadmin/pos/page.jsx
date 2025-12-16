@@ -436,7 +436,7 @@ function POSContent({
   const [showCartMobile, setShowCartMobile] = useState(false);
 
   return (
-    <div className="h-screen flex flex-col lg:flex-row bg-gray-50 overflow-hidden -m-6" style={{ width: `calc(100vw - ${sidebarWidth}px)`, marginLeft: '-1.5rem', transition: 'width 0.3s ease' }}>
+    <div className="h-screen flex flex-col lg:flex-row bg-white overflow-hidden -m-6" style={{ width: `calc(100vw - ${sidebarWidth}px)`, marginLeft: '-1.5rem', transition: 'width 0.3s ease' }}>
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           {/* Search Bar */}
@@ -452,7 +452,7 @@ function POSContent({
                 placeholder="Search product..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
               />
               <button
                 type="submit"
@@ -492,7 +492,7 @@ function POSContent({
                       className={`flex flex-col items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl whitespace-nowrap transition-all min-w-[60px] sm:min-w-[66px] flex-shrink-0 touch-manipulation ${
                         isSelected
                           ? 'bg-purple-600 text-white shadow-lg'
-                          : 'bg-amber-50 text-gray-700 hover:bg-amber-100 active:bg-amber-200 shadow-sm border border-amber-200'
+                          : 'bg-amber-50 text-gray-800 hover:bg-amber-100 active:bg-amber-200 shadow-sm border border-amber-200'
                       }`}
                     >
                       <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center overflow-hidden ${
@@ -515,7 +515,7 @@ function POSContent({
                       </div>
                       <span className="capitalize font-medium text-[10px] sm:text-xs leading-tight">{categoryName}</span>
                       {category.count !== undefined && category.count > 0 && (
-                        <span className={`text-[9px] sm:text-[10px] ${isSelected ? 'text-white/90' : 'text-gray-600'}`}>
+                        <span className={`text-[9px] sm:text-[10px] ${isSelected ? 'text-white/90' : 'text-gray-800'}`}>
                           {category.count}
                         </span>
                       )}
@@ -531,21 +531,21 @@ function POSContent({
             {loading ? (
               <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
                 {[...Array(10)].map((_, index) => (
-                  <div key={index} className="bg-gray-50 border border-gray-200 rounded-lg p-1.5 sm:p-2 shadow-sm animate-pulse">
+                  <div key={index} className="bg-white border border-gray-200 rounded-lg p-1.5 sm:p-2 shadow-sm animate-pulse">
                     {/* Image Skeleton */}
-                    <div className="w-full h-12 sm:h-16 bg-gray-300 rounded-md mb-1.5 sm:mb-2"></div>
+                    <div className="w-full h-12 sm:h-16 bg-white rounded-md mb-1.5 sm:mb-2"></div>
                     {/* Title Skeleton */}
-                    <div className="h-3 sm:h-4 bg-gray-300 rounded w-3/4 mb-1 sm:mb-2"></div>
-                    <div className="h-3 sm:h-4 bg-gray-300 rounded w-1/2 mb-1 sm:mb-2"></div>
+                    <div className="h-3 sm:h-4 bg-white rounded w-3/4 mb-1 sm:mb-2"></div>
+                    <div className="h-3 sm:h-4 bg-white rounded w-1/2 mb-1 sm:mb-2"></div>
                     {/* Price Skeleton */}
-                    <div className="h-4 sm:h-5 bg-gray-300 rounded w-2/3 mb-1.5 sm:mb-2"></div>
+                    <div className="h-4 sm:h-5 bg-white rounded w-2/3 mb-1.5 sm:mb-2"></div>
                     {/* Button Skeleton */}
-                    <div className="h-7 sm:h-8 bg-gray-300 rounded w-full"></div>
+                    <div className="h-7 sm:h-8 bg-white rounded w-full"></div>
                   </div>
                 ))}
               </div>
             ) : filteredProducts.length === 0 ? (
-              <div className="text-center py-8 sm:py-12 text-gray-500 text-sm sm:text-base">No products found</div>
+              <div className="text-center py-8 sm:py-12 text-gray-600 text-sm sm:text-base">No products found</div>
             ) : (
               <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
                 {filteredProducts.map((product) => {
@@ -556,7 +556,7 @@ function POSContent({
                   return (
                     <div
                       key={productId}
-                      className={`bg-gray-50 border border-gray-200 rounded-lg p-1.5 sm:p-2 shadow-sm transition touch-manipulation ${
+                      className={`bg-white border border-gray-200 rounded-lg p-1.5 sm:p-2 shadow-sm transition touch-manipulation ${
                         availableStock > 0
                           ? 'hover:shadow-md active:scale-95 cursor-pointer'
                           : 'opacity-50 cursor-not-allowed'
@@ -579,7 +579,7 @@ function POSContent({
                           />
                         ) : null}
                         <div 
-                          className={`w-full h-12 sm:h-16 bg-gray-200 rounded-md flex items-center justify-center ${productImage ? 'hidden' : 'flex'}`}
+                          className={`w-full h-12 sm:h-16 bg-white rounded-md flex items-center justify-center ${productImage ? 'hidden' : 'flex'}`}
                         >
                           <span className="text-xl sm:text-2xl">📦</span>
                         </div>
@@ -594,7 +594,7 @@ function POSContent({
                       <button
                         onClick={() => addToCart(product)}
                         disabled={availableStock <= 0}
-                        className="w-full bg-red-600 text-white py-1.5 sm:py-2 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-[10px] sm:text-xs font-medium transition touch-manipulation"
+                        className="w-full bg-red-600 text-white py-1.5 sm:py-2 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:bg-gray-200 disabled:cursor-not-allowed text-[10px] sm:text-xs font-medium transition touch-manipulation"
                       >
                         Add to Cart
                       </button>
@@ -616,7 +616,7 @@ function POSContent({
 
           <div className="flex-1 overflow-y-auto min-h-0 p-2">
             {cart.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">
+              <div className="p-4 text-center text-gray-600">
                 <p>Cart is empty</p>
               </div>
             ) : (
@@ -628,11 +628,11 @@ function POSContent({
                   const itemTotal = item.price * qtyInUnit;
                   
                   return (
-                    <div key={item.productId} className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+                    <div key={item.productId} className="bg-white rounded-lg p-2 border border-gray-200">
                       <div className="flex justify-between items-start mb-1.5">
                         <div className="flex-1">
                           <h4 className="font-medium text-sm text-gray-900 mb-0.5">{item.name}</h4>
-                          <p className="text-xs text-gray-500">Available: {availableStock} {item.unit}</p>
+                          <p className="text-xs text-gray-600">Available: {availableStock} {item.unit}</p>
                         </div>
                         <button
                           onClick={() => removeFromCart(item.productId)}
@@ -660,17 +660,17 @@ function POSContent({
                                   updateQuantity(item.productId, value);
                                 }
                               }}
-                              className="w-16 text-sm text-center font-medium border border-gray-300 rounded px-1 py-1 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                              className="w-16 text-sm text-center font-medium border border-gray-200 rounded px-1 py-1 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                               min="0"
                             />
-                            <span className="text-xs ml-1 text-gray-600">
+                            <span className="text-xs ml-1 text-gray-800">
                               {item.unit === 'kg' ? 'g' : 'pcs'}
                             </span>
                           </div>
                           <button
                             onClick={() => updateQuantity(item.productId, item.quantity + (item.unit === 'kg' ? 100 : 1))}
                             disabled={item.quantity >= availableStock}
-                            className="w-7 h-7 rounded bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed text-sm font-bold"
+                            className="w-7 h-7 rounded bg-gray-200 hover:bg-gray-300 disabled:bg-gray-200 disabled:cursor-not-allowed text-sm font-bold"
                           >
                             +
                           </button>
@@ -685,7 +685,7 @@ function POSContent({
           </div>
 
           {/* Cart Footer */}
-          <div className="border-t p-3 bg-gray-50 flex-shrink-0">
+          <div className="border-t p-3 bg-white flex-shrink-0">
             <div className="mb-2">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-base sm:text-lg font-bold text-gray-900">Total:</span>
@@ -716,7 +716,7 @@ function POSContent({
                 </h2>
                 <button
                   onClick={() => setShowCartMobile(false)}
-                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                  className="text-gray-600 hover:text-gray-800 text-2xl"
                 >
                   ×
                 </button>
@@ -724,7 +724,7 @@ function POSContent({
 
               <div className="flex-1 overflow-y-auto min-h-0 p-3">
                 {cart.length === 0 ? (
-                  <div className="p-4 text-center text-gray-500 text-sm">
+                  <div className="p-4 text-center text-gray-600 text-sm">
                     <p>Cart is empty</p>
                   </div>
                 ) : (
@@ -736,11 +736,11 @@ function POSContent({
                       const itemTotal = item.price * qtyInUnit;
                       
                       return (
-                        <div key={item.productId} className="bg-gray-50 rounded-lg p-2.5 border border-gray-200">
+                        <div key={item.productId} className="bg-white rounded-lg p-2.5 border border-gray-200">
                           <div className="flex justify-between items-start mb-2">
                             <div className="flex-1 min-w-0">
                               <h4 className="font-medium text-sm text-gray-900 mb-0.5 truncate">{item.name}</h4>
-                              <p className="text-xs text-gray-500">Available: {availableStock} {item.unit}</p>
+                              <p className="text-xs text-gray-600">Available: {availableStock} {item.unit}</p>
                             </div>
                             <button
                               onClick={() => removeFromCart(item.productId)}
@@ -754,7 +754,7 @@ function POSContent({
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() => updateQuantity(item.productId, item.quantity - (item.unit === 'kg' ? 100 : 1))}
-                                className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-sm font-bold touch-manipulation"
+                                className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 active:bg-white text-sm font-bold touch-manipulation"
                               >
                                 -
                               </button>
@@ -768,17 +768,17 @@ function POSContent({
                                       updateQuantity(item.productId, value);
                                     }
                                   }}
-                                  className="w-16 text-sm text-center font-medium border border-gray-300 rounded px-1 py-1 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                                  className="w-16 text-sm text-center font-medium border border-gray-200 rounded px-1 py-1 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                                   min="0"
                                 />
-                                <span className="text-xs ml-1 text-gray-600">
+                                <span className="text-xs ml-1 text-gray-800">
                                   {item.unit === 'kg' ? 'g' : 'pcs'}
                                 </span>
                               </div>
                               <button
                                 onClick={() => updateQuantity(item.productId, item.quantity + (item.unit === 'kg' ? 100 : 1))}
                                 disabled={item.quantity >= availableStock}
-                                className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 active:bg-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed text-sm font-bold touch-manipulation"
+                                className="w-8 h-8 rounded bg-gray-200 disabled:bg-gray-100 disabled:cursor-not-allowed text-sm font-bold touch-manipulation"
                               >
                                 +
                               </button>
@@ -792,7 +792,7 @@ function POSContent({
                 )}
               </div>
 
-              <div className="border-t p-4 bg-gray-50 flex-shrink-0">
+              <div className="border-t p-4 bg-white flex-shrink-0">
                 <div className="mb-3">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-lg font-bold text-gray-900">Total:</span>
@@ -830,7 +830,7 @@ function POSContent({
                 <form onSubmit={(e) => { e.preventDefault(); handleCheckout(); }}>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-800 mb-1">
                         Name <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -839,11 +839,11 @@ function POSContent({
                         placeholder="Enter customer name"
                         value={customerData.name}
                         onChange={(e) => setCustomerData({ ...customerData, name: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-800 mb-1">
                         Mobile No <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -854,11 +854,11 @@ function POSContent({
                         maxLength="10"
                         value={customerData.mobile}
                         onChange={(e) => setCustomerData({ ...customerData, mobile: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-800 mb-1">
                         Address <span className="text-red-500">*</span>
                       </label>
                       <textarea
@@ -867,11 +867,11 @@ function POSContent({
                         placeholder="Enter customer address"
                         value={customerData.address}
                         onChange={(e) => setCustomerData({ ...customerData, address: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-800 mb-1">
                         Payment Type <span className="text-red-500">*</span>
                       </label>
                       <select
@@ -879,7 +879,7 @@ function POSContent({
                         value={customerData.paymentType}
                         onChange={(e) => setCustomerData({ ...customerData, paymentType: e.target.value })}
                         className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none ${
-                          customerData.paymentType === '' ? 'text-gray-400 border-gray-300' : 'text-gray-900 border-gray-300'
+                          customerData.paymentType === '' ? 'text-gray-800 border-gray-200' : 'text-gray-900 border-gray-200'
                         }`}
                       >
                         <option value="" disabled>Select Payment Type</option>
@@ -888,7 +888,7 @@ function POSContent({
                         <option value="Card">💳 Card</option>
                       </select>
                       {customerData.paymentType === '' && (
-                        <p className="mt-1 text-xs text-gray-500">Please select a payment method</p>
+                        <p className="mt-1 text-xs text-gray-600">Please select a payment method</p>
                       )}
                     </div>
                   </div>
@@ -902,7 +902,7 @@ function POSContent({
                     <button
                       type="button"
                       onClick={() => setShowCheckoutPopup(false)}
-                      className="flex-1 bg-gray-200 text-gray-700 py-2.5 px-4 rounded-lg hover:bg-gray-300 font-medium transition"
+                      className="flex-1 bg-white text-gray-800 py-2.5 px-4 rounded-lg hover:bg-white font-medium transition"
                     >
                       Cancel
                     </button>

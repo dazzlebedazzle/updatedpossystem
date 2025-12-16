@@ -260,25 +260,25 @@ export default function SuperAdminReports() {
         <div className="bg-white shadow rounded-lg p-4 mb-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-800 mb-1">
                 From Date
               </label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-800 mb-1">
                 To Date
               </label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
               />
             </div>
             <div className="flex items-end">
@@ -287,7 +287,7 @@ export default function SuperAdminReports() {
                   setStartDate('');
                   setEndDate('');
                 }}
-                className="w-full bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 font-medium"
+                className="w-full bg-white text-gray-800 px-4 py-2 rounded-lg hover:bg-white font-medium"
               >
                 Clear Filters
               </button>
@@ -298,15 +298,15 @@ export default function SuperAdminReports() {
         {/* Summary Cards */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-6">
           <div className="bg-white overflow-hidden shadow rounded-lg p-6">
-            <h3 className="text-sm font-medium text-gray-500">Total Revenue</h3>
+            <h3 className="text-sm font-medium text-gray-600">Total Revenue</h3>
             <p className="mt-2 text-3xl font-bold text-gray-900">₹{summary.totalRevenue.toFixed(2)}</p>
           </div>
           <div className="bg-white overflow-hidden shadow rounded-lg p-6">
-            <h3 className="text-sm font-medium text-gray-500">Total Sales</h3>
+            <h3 className="text-sm font-medium text-gray-600">Total Sales</h3>
             <p className="mt-2 text-3xl font-bold text-gray-900">{summary.totalSales}</p>
           </div>
           <div className="bg-white overflow-hidden shadow rounded-lg p-6">
-            <h3 className="text-sm font-medium text-gray-500">Total Items Sold</h3>
+            <h3 className="text-sm font-medium text-gray-600">Total Items Sold</h3>
             <p className="mt-2 text-3xl font-bold text-gray-900">{summary.totalItems}</p>
           </div>
         </div>
@@ -314,43 +314,43 @@ export default function SuperAdminReports() {
         {/* Sales Table */}
         {loading ? (
           <div className="bg-white shadow rounded-lg p-8 text-center">
-            <div className="text-gray-500">Loading...</div>
+            <div className="text-gray-600">Loading...</div>
           </div>
         ) : filteredSales.length === 0 ? (
           <div className="bg-white shadow rounded-lg p-8 text-center">
-            <div className="text-gray-500">No sales found for the selected date range.</div>
+            <div className="text-gray-600">No sales found for the selected date range.</div>
           </div>
         ) : (
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-gray-800">
+                <thead className="bg-white">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sale ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer Mobile</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Sale ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Customer Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Customer Mobile</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Items</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Total</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Payment Method</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-gray-800">
                   {filteredSales.map((sale) => (
                     <tr key={sale._id || sale.id || `sale-${Math.random()}`}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {(sale._id || sale.id || '').toString().substring(0, 8)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {new Date(sale.createdAt || sale.date).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {sale.customerName || 'N/A'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {sale.customerMobile || 'N/A'}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
+                      <td className="px-6 py-4 text-sm text-gray-600">
                         <div className="max-w-xs">
                           {sale.items?.map((item, index) => (
                             <div key={index} className="text-xs">
@@ -362,7 +362,7 @@ export default function SuperAdminReports() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         ₹{sale.total?.toFixed(2) || '0.00'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {sale.paymentMethod || 'N/A'}
                       </td>
                     </tr>

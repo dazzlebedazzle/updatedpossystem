@@ -1,3 +1,11 @@
 node_modules
 .next
-
+.env
+.env.local
+.env.production
+.env*.local
+*.log
+.DS_Store
+*.pem
+*.key
+security-cleanup.sh
