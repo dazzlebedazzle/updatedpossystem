@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { checkRateLimit } from '@/lib/rate-limiter';
+import { checkRateLimit, getRateLimitConfig } from '@/lib/rate-limiter';
 import { validateRequestSize, addSecurityHeaders } from '@/lib/request-protection';
 import { safeJsonParse, sanitizeSession } from '@/lib/security-utils';
 
@@ -17,6 +17,9 @@ export async function middleware(request) {
     // Check rate limit (now async)
     const rateLimitResult = await checkRateLimit(request, pathname);
     
+    // Get rate limit config for this endpoint
+    const rateLimitConfig = getRateLimitConfig(pathname);
+    
     if (!rateLimitResult.allowed) {
       // Create response with rate limit headers
       const response = NextResponse.json(
@@ -29,7 +32,7 @@ export async function middleware(request) {
       );
       
       // Add rate limit headers
-      response.headers.set('X-RateLimit-Limit', '60');
+      response.headers.set('X-RateLimit-Limit', rateLimitConfig.maxRequests.toString());
       response.headers.set('X-RateLimit-Remaining', '0');
       response.headers.set('X-RateLimit-Reset', new Date(rateLimitResult.resetTime).toISOString());
       response.headers.set('Retry-After', rateLimitResult.retryAfter.toString());
@@ -39,7 +42,7 @@ export async function middleware(request) {
     
     // Add rate limit info headers for allowed requests
     const response = NextResponse.next();
-    response.headers.set('X-RateLimit-Limit', '60');
+    response.headers.set('X-RateLimit-Limit', rateLimitConfig.maxRequests.toString());
     response.headers.set('X-RateLimit-Remaining', rateLimitResult.remaining.toString());
     response.headers.set('X-RateLimit-Reset', new Date(rateLimitResult.resetTime).toISOString());
     
