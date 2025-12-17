@@ -31,14 +31,62 @@ export default function Receipt({ saleData, onClose }) {
     }
   }, [isMobile]);
 
+  // Sanitize HTML to prevent XSS attacks
+  const sanitizeHTML = (html) => {
+    const div = document.createElement('div');
+    div.textContent = html;
+    return div.innerHTML;
+  };
+
+  // Escape HTML entities
+  const escapeHTML = (str) => {
+    if (typeof str !== 'string') return str;
+    const map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return str.replace(/[&<>"']/g, m => map[m]);
+  };
+
   const handlePrint = () => {
     const printContent = receiptRef.current;
+    if (!printContent) return;
+    
+    // Clone the content and sanitize it
+    const clonedContent = printContent.cloneNode(true);
+    
+    // Remove any script tags and event handlers
+    const scripts = clonedContent.querySelectorAll('script');
+    scripts.forEach(script => script.remove());
+    
+    // Remove event handlers from all elements
+    const allElements = clonedContent.querySelectorAll('*');
+    allElements.forEach(el => {
+      // Remove all event handlers
+      const attrs = el.attributes;
+      for (let i = attrs.length - 1; i >= 0; i--) {
+        const attr = attrs[i];
+        if (attr.name.startsWith('on')) {
+          el.removeAttribute(attr.name);
+        }
+      }
+    });
+    
+    // Get sanitized HTML
+    const sanitizedHTML = clonedContent.innerHTML;
+    
     const windowPrint = window.open('', '', 'width=800,height=600');
+    
+    // Escape all user data before inserting
+    const safeReceiptNumber = escapeHTML(saleData.receiptNumber || '');
     
     windowPrint.document.write(`
       <html>
         <head>
-          <title>Receipt - ${saleData.receiptNumber}</title>
+          <title>Receipt - ${safeReceiptNumber}</title>
           <style>
             * {
               margin: 0;
@@ -168,7 +216,7 @@ export default function Receipt({ saleData, onClose }) {
           </style>
         </head>
         <body>
-          ${printContent.innerHTML}
+          ${sanitizedHTML}
         </body>
       </html>
     `);
