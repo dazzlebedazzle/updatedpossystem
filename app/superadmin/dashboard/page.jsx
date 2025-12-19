@@ -65,7 +65,7 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  const fetchChartData = async () => {
+  const fetchChartData = useCallback(async () => {
     try {
       setChartLoading(true);
       const response = await fetch(`/api/dashboard/analytics?period=${period}`);
