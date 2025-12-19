@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Layout, { useSidebar } from '@/components/Layout';
 import { toast } from '@/lib/toast';
 import Receipt from '@/components/Receipt';
@@ -27,7 +27,7 @@ export default function UserPOS() {
   useEffect(() => {
     fetchProducts();
     fetchCategories();
-  }, []);
+  }, [fetchCategories]);
 
   const fetchProducts = async () => {
     try {
@@ -71,7 +71,7 @@ export default function UserPOS() {
     }
   };
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       // Use authenticatedFetch to get filtered products
       const allProducts = products.length > 0 ? products : (await authenticatedFetch('/api/products').then(r => r.json())).products || [];
@@ -136,13 +136,13 @@ export default function UserPOS() {
       const allCategory = { name: 'All', count: allProducts.length };
       setCategories([allCategory, ...categoriesWithCount]);
     }
-  };
+  }, [products]);
 
   useEffect(() => {
     if (products.length > 0) {
       fetchCategories();
     }
-  }, [products.length]);
+  }, [products.length, fetchCategories]);
 
   // Additional deduplication check (products should already be unique from fetchProducts, but this is a safety measure)
   const seenKeys = new Set();
@@ -181,7 +181,6 @@ export default function UserPOS() {
     const existingItem = cart.find(item => item.productId === productId);
     if (existingItem) {
       // Convert cart quantity to same unit as stock for comparison
-      const cartQtyInStockUnit = unit === 'kg' ? existingItem.quantity / 1000 : existingItem.quantity;
       const newQtyInStockUnit = unit === 'kg' ? (existingItem.quantity + defaultQty) / 1000 : existingItem.quantity + defaultQty;
       
       if (newQtyInStockUnit > availableStock) {

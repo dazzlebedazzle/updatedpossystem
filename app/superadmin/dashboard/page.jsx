@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Layout from '@/components/Layout';
 import {
   LineChart,
@@ -36,7 +36,7 @@ export default function SuperAdminDashboard() {
 
   useEffect(() => {
     fetchChartData();
-  }, [period]);
+  }, [period, fetchChartData]);
 
   const fetchStats = async () => {
     try {
@@ -79,7 +79,7 @@ export default function SuperAdminDashboard() {
     } finally {
       setChartLoading(false);
     }
-  };
+  }, [period]);
 
   const formatDateLabel = (date) => {
     if (period === 'daily') {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
-import { MODULES, OPERATIONS, generatePermission, getAllAvailablePermissions } from '@/lib/permissions';
+import { generatePermission, getAllAvailablePermissions } from '@/lib/permissions';
 import { toast } from '@/lib/toast';
 
 export default function SuperAdminPermissions() {
@@ -232,7 +232,7 @@ export default function SuperAdminPermissions() {
                         </button>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        {operations.map(({ operation, permission, label }) => (
+                        {operations.map(({ operation, permission }) => (
                           <label
                             key={permission}
                             className={`flex items-center space-x-2 cursor-pointer p-2 rounded border transition ${

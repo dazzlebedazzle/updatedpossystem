@@ -48,7 +48,7 @@ export default function RegisterPage() {
       } else {
         setError(data.error || 'Registration failed');
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred. Please try again.');
     } finally {
       setLoading(false);

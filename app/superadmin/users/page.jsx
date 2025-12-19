@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
-import Link from 'next/link';
 import { getDefaultPermissions } from '@/lib/permissions';
 import { toast } from '@/lib/toast';
 import { suppliers } from '@/lib/suppliers';
@@ -13,7 +12,7 @@ export default function SuperAdminUsers() {
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [selectedRole, setSelectedRole] = useState('agent'); // Track which role button was clicked
+  const [_selectedRole, setSelectedRole] = useState('agent'); // Track which role button was clicked
   const [formData, setFormData] = useState({
     name: '',
     email: '',

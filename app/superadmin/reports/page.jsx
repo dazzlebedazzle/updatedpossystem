@@ -123,7 +123,6 @@ export default function SuperAdminReports() {
     let yPosition = 20;
     const lineHeight = 7;
     const margin = 15;
-    const tableStartY = 50;
 
     // Title
     doc.setFontSize(18);
@@ -171,7 +170,7 @@ export default function SuperAdminReports() {
 
     // Table Rows
     doc.setFont(undefined, 'normal');
-    filteredSales.forEach((sale, index) => {
+    filteredSales.forEach((sale) => {
       // Check if we need a new page
       if (yPosition > pageHeight - 30) {
         doc.addPage();

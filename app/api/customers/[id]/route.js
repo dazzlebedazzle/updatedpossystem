@@ -14,7 +14,7 @@ export async function GET(request, { params }) {
     if (sessionCookie) {
       try {
         session = JSON.parse(sessionCookie.value);
-      } catch (e) {
+      } catch {
         return NextResponse.json(
           { error: 'Unauthorized' },
           { status: 401 }

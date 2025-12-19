@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
-import { join, extname, basename, resolve } from 'path';
+import { extname, basename, resolve } from 'path';
 import { existsSync } from 'fs';
 import { getSessionFromRequest } from '@/lib/auth-helper';
 import { hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
@@ -85,11 +85,6 @@ export async function POST(request) {
         { status: 400 }
       );
     }
-
-    // Sanitize filename - remove path traversal attempts and dangerous characters
-    const sanitizedName = basename(originalName)
-      .replace(/[^a-zA-Z0-9._-]/g, '_')
-      .substring(0, 100); // Limit filename length
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);

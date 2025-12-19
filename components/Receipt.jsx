@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import jsPDF from 'jspdf';
 
 export default function Receipt({ saleData, onClose }) {
@@ -29,14 +29,8 @@ export default function Receipt({ saleData, onClose }) {
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [isMobile]);
+  }, [isMobile, handlePrint]);
 
-  // Sanitize HTML to prevent XSS attacks
-  const sanitizeHTML = (html) => {
-    const div = document.createElement('div');
-    div.textContent = html;
-    return div.innerHTML;
-  };
 
   // Escape HTML entities
   const escapeHTML = (str) => {
@@ -51,7 +45,7 @@ export default function Receipt({ saleData, onClose }) {
     return str.replace(/[&<>"']/g, m => map[m]);
   };
 
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     const printContent = receiptRef.current;
     if (!printContent) return;
     
@@ -228,7 +222,7 @@ export default function Receipt({ saleData, onClose }) {
       windowPrint.print();
       windowPrint.close();
     }, 250);
-  };
+  }, [saleData]);
 
   const formatDate = (date) => {
     return new Date(date).toLocaleString('en-IN', {
@@ -254,16 +248,7 @@ export default function Receipt({ saleData, onClose }) {
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 10;
     let yPosition = 10;
-    const lineHeight = 6;
     const maxWidth = pageWidth - (margin * 2);
-
-    // Helper function to add text with word wrap
-    const addText = (text, x, y, fontSize = 10, align = 'left', maxWidth = pageWidth - (margin * 2)) => {
-      doc.setFontSize(fontSize);
-      const lines = doc.splitTextToSize(text, maxWidth);
-      doc.text(lines, x, y, { align });
-      return lines.length * (fontSize * 0.4);
-    };
 
     // Header with Logo
     try {
@@ -273,7 +258,7 @@ export default function Receipt({ saleData, onClose }) {
       logoImg.src = '/assets/category_images/logoo.png';
       
       // Wait for image to load
-      await new Promise((resolve, reject) => {
+      await new Promise((resolve) => {
         if (logoImg.complete) {
           resolve();
         } else {

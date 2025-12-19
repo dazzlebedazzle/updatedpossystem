@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function POST(request) {
+export async function POST() {
   try {
     const response = NextResponse.json({ 
       success: true,
@@ -68,7 +68,7 @@ export async function POST(request) {
 }
 
 // Handle OPTIONS request for CORS preflight
-export async function OPTIONS(request) {
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {

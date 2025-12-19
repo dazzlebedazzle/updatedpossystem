@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { customerDB, saleDB, userDB } from '@/lib/database';
+import { customerDB, saleDB } from '@/lib/database';
 import { hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
 import { getSessionFromRequest } from '@/lib/auth-helper';
 

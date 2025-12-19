@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, createContext, useContext } from 'react';
+import { useState, useEffect, useMemo, createContext, useContext } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
@@ -16,15 +16,12 @@ export const useSidebar = () => useContext(SidebarContext);
 export default function Layout({ children, userRole, userName }) {
   const [user, setUser] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(256); // 16rem = 256px
   const [showProfileModal, setShowProfileModal] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
-  useEffect(() => {
-    // Update sidebar width when collapsed state changes
-    setSidebarWidth(sidebarCollapsed ? 64 : 256); // 4rem or 16rem in pixels
-  }, [sidebarCollapsed]);
+  // Compute sidebar width directly from collapsed state
+  const sidebarWidth = useMemo(() => sidebarCollapsed ? 64 : 256, [sidebarCollapsed]);
 
   useEffect(() => {
     // Get user from session
