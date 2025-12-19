@@ -197,7 +197,7 @@ export default function Receipt({ saleData, onClose }) {
       windowPrint.print();
       windowPrint.close();
     }, 250);
-  }, [saleData, escapeHTML]);
+  }, [saleData]);
 
   // Detect mobile device
   useEffect(() => {

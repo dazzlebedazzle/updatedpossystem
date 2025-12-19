@@ -26,7 +26,8 @@ export default function SuperAdminPOS() {
   useEffect(() => {
     fetchProducts();
     fetchCategories();
-  }, [fetchCategories]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchProducts = async () => {
     try {
