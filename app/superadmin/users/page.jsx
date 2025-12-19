@@ -12,7 +12,7 @@ export default function SuperAdminUsers() {
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [_selectedRole, setSelectedRole] = useState('agent'); // Track which role button was clicked
+  const [, setSelectedRole] = useState('agent'); // Track which role button was clicked
   const [formData, setFormData] = useState({
     name: '',
     email: '',

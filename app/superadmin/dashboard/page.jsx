@@ -32,6 +32,7 @@ export default function SuperAdminDashboard() {
   useEffect(() => {
     fetchStats();
     fetchChartData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

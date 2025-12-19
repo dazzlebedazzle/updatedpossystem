@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
-import { extname, basename, resolve } from 'path';
+import { extname, resolve } from 'path';
 import { existsSync } from 'fs';
 import { getSessionFromRequest } from '@/lib/auth-helper';
 import { hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';

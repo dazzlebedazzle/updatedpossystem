@@ -36,7 +36,6 @@ export async function GET(request) {
     // Use fresh user data if available, otherwise fallback to session
     if (freshUser) {
       const userObj = freshUser.toObject ? freshUser.toObject() : freshUser;
-      const { password: _, ...userWithoutPassword } = userObj;
       
       return NextResponse.json({
         user: {

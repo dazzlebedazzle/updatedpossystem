@@ -7,31 +7,6 @@ export default function Receipt({ saleData, onClose }) {
   const receiptRef = useRef();
   const [isMobile, setIsMobile] = useState(false);
 
-  // Detect mobile device
-  useEffect(() => {
-    const checkMobile = () => {
-      const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-      const isAndroid = /android/i.test(userAgent);
-      const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
-      setIsMobile(isAndroid || isIOS || window.innerWidth < 768);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  // Auto-trigger print dialog only on desktop
-  useEffect(() => {
-    if (!isMobile) {
-      const timer = setTimeout(() => {
-        handlePrint();
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [isMobile, handlePrint]);
-
-
   // Escape HTML entities
   const escapeHTML = (str) => {
     if (typeof str !== 'string') return str;
@@ -222,7 +197,31 @@ export default function Receipt({ saleData, onClose }) {
       windowPrint.print();
       windowPrint.close();
     }, 250);
-  }, [saleData]);
+  }, [saleData, escapeHTML]);
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+      const isAndroid = /android/i.test(userAgent);
+      const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+      setIsMobile(isAndroid || isIOS || window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Auto-trigger print dialog only on desktop
+  useEffect(() => {
+    if (!isMobile) {
+      const timer = setTimeout(() => {
+        handlePrint();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isMobile, handlePrint]);
 
   const formatDate = (date) => {
     return new Date(date).toLocaleString('en-IN', {
