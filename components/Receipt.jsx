@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState, useCallback } from 'react';
+import Image from 'next/image';
 import jsPDF from 'jspdf';
 
 export default function Receipt({ saleData, onClose }) {
@@ -422,8 +423,8 @@ export default function Receipt({ saleData, onClose }) {
               <div className="receipt" style={{ maxWidth: '300px', margin: '0 auto', fontFamily: '"Courier New", monospace' }}>
                 {/* Header */}
                 <div className="header" style={{ textAlign: 'center', borderBottom: '2px dashed #000', paddingBottom: '10px', marginBottom: '10px' }}>
-                  <div className="logo" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '5px' }}>
-                    <img src="/assets/category_images/logoo.png" alt="Tajalli Logo" style={{ maxWidth: '120px', maxHeight: '60px', objectFit: 'contain' }} />
+                  <div className="logo" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', width: '120px', height: '60px', margin: '0 auto 5px' }}>
+                    <Image src="/assets/category_images/logoo.png" alt="Tajalli Logo" width={120} height={60} style={{ objectFit: 'contain' }} />
                   </div>
                   <div className="company-name" style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '5px' }}>TAJALLI</div>
                   <div className="company-details" style={{ fontSize: '10px', lineHeight: '1.4' }}>

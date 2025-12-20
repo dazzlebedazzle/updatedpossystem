@@ -1,10 +1,30 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import Layout, { useSidebar } from '@/components/Layout';
 import { toast } from '@/lib/toast';
 import Receipt from '@/components/Receipt';
 import { categories as predefinedCategories, getCategoryImage } from '@/lib/categories';
+
+// Image component with error handling
+const SafeImage = ({ src, alt, fill, className, fallback }) => {
+  const [hasError, setHasError] = useState(false);
+  
+  if (hasError || !src) {
+    return fallback;
+  }
+  
+  return (
+    <Image 
+      src={src} 
+      alt={alt}
+      fill={fill}
+      className={className}
+      onError={() => setHasError(true)}
+    />
+  );
+};
 
 export default function AdminPOS() {
   const [products, setProducts] = useState([]);
@@ -495,23 +515,26 @@ function POSContent({
                           : 'bg-amber-50 text-gray-800 hover:bg-amber-100 active:bg-amber-200 shadow-sm border border-amber-200'
                       }`}
                     >
-                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center overflow-hidden ${
+                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center overflow-hidden relative ${
                         isSelected ? 'bg-white/20' : 'bg-white'
                       }`}>
                         {categoryImage ? (
-                          <img 
-                            src={categoryImage} 
+                          <SafeImage
+                            src={categoryImage}
                             alt={categoryName}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                              e.target.nextSibling.style.display = 'flex';
-                            }}
+                            fill
+                            className="object-cover"
+                            fallback={
+                              <div className="w-full h-full flex items-center justify-center text-lg sm:text-xl">
+                                {getCategoryIcon(categoryName)}
+                              </div>
+                            }
                           />
-                        ) : null}
-                        <div className={`w-full h-full flex items-center justify-center text-lg sm:text-xl ${categoryImage ? 'hidden' : 'flex'}`}>
-                        {getCategoryIcon(categoryName)}
-                      </div>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-lg sm:text-xl">
+                            {getCategoryIcon(categoryName)}
+                          </div>
+                        )}
                       </div>
                       <span className="capitalize font-medium text-[10px] sm:text-xs leading-tight">{categoryName}</span>
                       {category.count !== undefined && category.count > 0 && (
@@ -565,24 +588,25 @@ function POSContent({
                       {/* Product Image - Clickable */}
                       <div 
                         onClick={() => availableStock > 0 && addToCart(product)}
-                        className="mb-1.5 sm:mb-2 cursor-pointer"
+                        className="mb-1.5 sm:mb-2 cursor-pointer relative w-full h-12 sm:h-16"
                       >
                         {productImage ? (
-                          <img 
-                            src={productImage} 
+                          <SafeImage
+                            src={productImage}
                             alt={product.product_name || product.name}
-                            className="w-full h-12 sm:h-16 object-cover rounded-md"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                              e.target.nextSibling.style.display = 'flex';
-                            }}
+                            fill
+                            className="object-cover rounded-md"
+                            fallback={
+                              <div className="w-full h-12 sm:h-16 bg-white rounded-md flex items-center justify-center">
+                                <span className="text-xl sm:text-2xl">📦</span>
+                              </div>
+                            }
                           />
-                        ) : null}
-                        <div 
-                          className={`w-full h-12 sm:h-16 bg-white rounded-md flex items-center justify-center ${productImage ? 'hidden' : 'flex'}`}
-                        >
-                          <span className="text-xl sm:text-2xl">📦</span>
-                        </div>
+                        ) : (
+                          <div className="w-full h-12 sm:h-16 bg-white rounded-md flex items-center justify-center">
+                            <span className="text-xl sm:text-2xl">📦</span>
+                          </div>
+                        )}
                       </div>
                       
                       <h3 className="font-medium text-[10px] sm:text-xs text-gray-900 mb-1 break-words" title={product.product_name || product.name}>

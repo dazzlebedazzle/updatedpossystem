@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import Layout from '@/components/Layout';
 
 export default function AdminProducts() {
@@ -295,11 +296,13 @@ export default function AdminProducts() {
                     className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
                   />
                   {imagePreview && (
-                    <div className="mt-2">
-                      <img 
+                    <div className="mt-2 relative w-20 h-20">
+                      <Image 
                         src={imagePreview} 
                         alt="Preview" 
-                        className="w-20 h-20 object-cover rounded border border-gray-200"
+                        fill
+                        className="object-cover rounded border border-gray-200"
+                        unoptimized
                       />
                     </div>
                   )}
