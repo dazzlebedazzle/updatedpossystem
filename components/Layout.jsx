@@ -17,6 +17,7 @@ export default function Layout({ children, userRole, userName }) {
   const [user, setUser] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -106,15 +107,32 @@ export default function Layout({ children, userRole, userName }) {
   return (
     <SidebarContext.Provider value={{ sidebarCollapsed, sidebarWidth }}>
       <div className="min-h-screen bg-white flex">
+        {/* Mobile Menu Overlay */}
+        {mobileMenuOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+          ></div>
+        )}
+
         {/* Sidebar */}
-        <aside className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-white shadow-lg fixed h-full transition-all duration-300 z-20 flex flex-col overflow-x-hidden`}>
+        <aside className={`
+          ${sidebarCollapsed ? 'w-16' : 'w-64'} 
+          bg-white shadow-lg fixed h-full transition-all duration-300 z-50 flex flex-col overflow-x-hidden
+          ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}>
         <div className={`${sidebarCollapsed ? 'p-2' : 'p-3'} border-b flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
           {!sidebarCollapsed && (
             <h1 className="text-lg font-bold text-indigo-600">POS System</h1>
           )}
           <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-1.5 rounded-lg hover:bg-white800 transition text-gray-800 hover:text-gray-800900"
+            onClick={() => {
+              setSidebarCollapsed(!sidebarCollapsed);
+              if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                setMobileMenuOpen(false);
+              }
+            }}
+            className="p-1.5 rounded-lg hover:bg-gray-100 transition text-gray-800"
             title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {sidebarCollapsed ? (
@@ -134,10 +152,15 @@ export default function Layout({ children, userRole, userName }) {
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  onClick={() => {
+                    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                      setMobileMenuOpen(false);
+                    }
+                  }}
                   className={`flex items-center ${sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2'} rounded-lg text-sm font-medium transition group relative ${
                     pathname === item.href
                       ? 'bg-indigo-100 text-indigo-700 border-l-4 border-indigo-600'
-                      : 'text-gray-800 hover:bg-white800'
+                      : 'text-gray-800 hover:bg-gray-100'
                   }`}
                   title={sidebarCollapsed ? item.label : ''}
                 >
@@ -158,8 +181,13 @@ export default function Layout({ children, userRole, userName }) {
         <div className={`${sidebarCollapsed ? 'p-2' : 'p-3'} border-t mt-auto overflow-x-hidden`}>
           {/* Profile Button */}
           <button
-            onClick={() => setShowProfileModal(true)}
-            className={`w-full ${sidebarCollapsed ? 'px-2 py-2' : 'px-3 py-2.5'} rounded-lg hover:bg-white800 transition flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'} group`}
+            onClick={() => {
+              setShowProfileModal(true);
+              if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                setMobileMenuOpen(false);
+              }
+            }}
+            className={`w-full ${sidebarCollapsed ? 'px-2 py-2' : 'px-3 py-2.5'} rounded-lg hover:bg-gray-100 transition flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'} group`}
             title={sidebarCollapsed ? 'Profile' : ''}
           >
             {sidebarCollapsed ? (
@@ -175,11 +203,11 @@ export default function Layout({ children, userRole, userName }) {
                   <p className="text-sm font-medium text-gray-900 truncate">
                     {userName || user?.name}
                   </p>
-                  <p className="text-xs text-gray-600 capitalize">
+                  <p className="text-xs text-gray-800 capitalize">
                     {userRole}
                   </p>
                 </div>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-800 group-hover:text-gray-800800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-800 group-hover:text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </>
@@ -225,7 +253,7 @@ export default function Layout({ children, userRole, userName }) {
                       </svg>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-600">Username</p>
+                      <p className="text-xs text-gray-800">Username</p>
                       <p className="text-sm font-medium text-gray-900">{user?.username || 'N/A'}</p>
                     </div>
                   </div>
@@ -237,7 +265,7 @@ export default function Layout({ children, userRole, userName }) {
                       </svg>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-600">Email</p>
+                      <p className="text-xs text-gray-800">Email</p>
                       <p className="text-sm font-medium text-gray-900">{user?.email || 'N/A'}</p>
                     </div>
                   </div>
@@ -249,7 +277,7 @@ export default function Layout({ children, userRole, userName }) {
                       </svg>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-600">Role</p>
+                      <p className="text-xs text-gray-800">Role</p>
                       <p className="text-sm font-medium text-gray-900 capitalize">{userRole}</p>
                     </div>
                   </div>
@@ -261,7 +289,7 @@ export default function Layout({ children, userRole, userName }) {
                       </svg>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-600">Account Status</p>
+                      <p className="text-xs text-gray-800">Account Status</p>
                       <p className="text-sm font-medium text-green-600 flex items-center gap-1">
                         <span className="w-2 h-2 bg-green-600 rounded-full"></span>
                         Active
@@ -286,7 +314,7 @@ export default function Layout({ children, userRole, userName }) {
                   </button>
                   <button
                     onClick={() => setShowProfileModal(false)}
-                    className="flex-1 bg-white text-gray-800 py-2.5 px-4 rounded-lg hover:bg-white800 font-medium transition"
+                    className="flex-1 bg-white text-gray-800 py-2.5 px-4 rounded-lg hover:bg-gray-100 font-medium transition border border-gray-200"
                   >
                     Close
                   </button>
@@ -297,14 +325,33 @@ export default function Layout({ children, userRole, userName }) {
         </>
       )}
 
-      {/* Main Content Area */}
-        <div className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
+        {/* Main Content Area */}
+        <div className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'} ml-0`}>
+          {/* Mobile Header */}
+          <div className="lg:hidden bg-white shadow-sm border-b sticky top-0 z-30 flex items-center justify-between p-4">
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 rounded-lg hover:bg-gray-100 transition"
+              aria-label="Open menu"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <h1 className="text-lg font-bold text-indigo-600">POS System</h1>
+            <button
+              onClick={() => setShowProfileModal(true)}
+              className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-sm"
+            >
+              {(userName || user?.name || 'U').charAt(0).toUpperCase()}
+            </button>
+          </div>
 
-        {/* Main Content */}
-        <main className="p-6">
-          {children}
-        </main>
-      </div>
+          {/* Main Content */}
+          <main className="p-3 sm:p-4 md:p-6">
+            {children}
+          </main>
+        </div>
     </div>
     </SidebarContext.Provider>
   );

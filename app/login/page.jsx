@@ -52,8 +52,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-xl p-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="max-w-md w-full bg-white rounded-lg shadow-xl p-6 sm:p-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">POS System</h1>
           <p className="text-gray-800 mt-2">Sign in to your account</p>
@@ -98,7 +98,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-800 hover:text-gray-800 focus:outline-none"
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-800 hover:text-gray-900 focus:outline-none"
               >
                 {showPassword ? (
                   <svg

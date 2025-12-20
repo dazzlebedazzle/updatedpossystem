@@ -198,7 +198,7 @@ export default function UserReports() {
       <Layout userRole="user">
         <div className="px-4 py-6 sm:px-0">
           <div className="flex items-center justify-center py-12">
-            <div className="text-gray-600">Loading permissions...</div>
+            <div className="text-gray-800">Loading permissions...</div>
           </div>
         </div>
       </Layout>
@@ -292,15 +292,15 @@ export default function UserReports() {
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Total Revenue</h3>
+            <h3 className="text-sm font-medium text-gray-800 mb-2">Total Revenue</h3>
             <p className="text-3xl font-bold text-indigo-600">₹{summary.totalRevenue.toFixed(2)}</p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Total Sales</h3>
+            <h3 className="text-sm font-medium text-gray-800 mb-2">Total Sales</h3>
             <p className="text-3xl font-bold text-green-600">{summary.totalSales}</p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Total Items Sold</h3>
+            <h3 className="text-sm font-medium text-gray-800 mb-2">Total Items Sold</h3>
             <p className="text-3xl font-bold text-blue-600">{summary.totalItems}</p>
           </div>
         </div>
@@ -324,7 +324,7 @@ export default function UserReports() {
         {/* Sales Table */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="text-gray-600">Loading...</div>
+            <div className="text-gray-800">Loading...</div>
           </div>
         ) : (
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
@@ -332,34 +332,34 @@ export default function UserReports() {
               <table className="min-w-full divide-y divide-gray-800">
                 <thead className="bg-white">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Customer Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Customer Mobile</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Items</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Total</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Payment Method</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Customer Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Customer Mobile</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Items</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Total</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Payment Method</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-800">
                   {filteredSales.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-600">
+                      <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-800">
                         No sales found
                       </td>
                     </tr>
                   ) : (
                     filteredSales.map((sale) => (
                       <tr key={sale._id || sale.id || `sale-${Math.random()}`}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
                           {new Date(sale.createdAt || sale.date).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{sale.customerName || 'N/A'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{sale.customerMobile || 'N/A'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{sale.customerMobile || 'N/A'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-800">
                           {sale.items?.length || 0} item(s)
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">₹{parseFloat(sale.total || 0).toFixed(2)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{sale.paymentMethod || 'N/A'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{sale.paymentMethod || 'N/A'}</td>
                       </tr>
                     ))
                   )}

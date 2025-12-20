@@ -69,17 +69,17 @@ export default function UserSales() {
             <table className="min-w-full divide-y divide-gray-800">
               <thead className="bg-white">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Items</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Total</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Payment</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Items</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Total</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Payment</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-800">
                 {sales.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-600">
+                    <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-800">
                       No sales found
                     </td>
                   </tr>
@@ -89,12 +89,12 @@ export default function UserSales() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {(sale._id || sale.id || '').toString().substring(0, 8)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
                         {new Date(sale.createdAt || sale.date).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{sale.items?.length || 0} item(s)</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{sale.items?.length || 0} item(s)</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">₹{parseFloat(sale.total || 0).toFixed(2)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 capitalize">{sale.paymentMethod || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 capitalize">{sale.paymentMethod || 'N/A'}</td>
                     </tr>
                   ))
                 )}

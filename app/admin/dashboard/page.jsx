@@ -45,13 +45,13 @@ export default function AdminDashboard() {
 
   return (
     <Layout userRole="admin">
-      <div className="px-4 py-6 sm:px-0">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Admin Dashboard</h1>
+      <div className="px-2 py-4 sm:px-4 sm:py-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">Admin Dashboard</h1>
 
         {loading ? (
-          <div>Loading...</div>
+          <div className="text-center py-8">Loading...</div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <div className="bg-white overflow-hidden shadow rounded-lg">
               <div className="p-5">
                 <div className="flex items-center">

@@ -63,12 +63,12 @@ export default function UserDashboard() {
 
   return (
     <Layout userRole="user">
-      <div className="px-4 py-6 sm:px-0">
-        <div className="flex justify-between items-center mb-6">
+      <div className="px-2 py-4 sm:px-4 sm:py-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard</h1>
             {userInfo && (
-              <p className="text-sm text-gray-800 mt-1">
+              <p className="text-xs sm:text-sm text-gray-800 mt-1">
                 Welcome back, <span className="font-semibold">{userInfo.name}</span> ({userInfo.email})
               </p>
             )}
@@ -78,7 +78,7 @@ export default function UserDashboard() {
               setLoading(true);
               fetchStats();
             }}
-            className="bg-white text-white px-4 py-2 rounded-lg hover:bg-white"
+            className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm sm:text-base"
           >
             Refresh
           </button>
@@ -86,10 +86,10 @@ export default function UserDashboard() {
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="text-gray-600">Loading...</div>
+            <div className="text-gray-800">Loading...</div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <div className="bg-white overflow-hidden shadow rounded-lg">
               <div className="p-5">
                 <div className="flex items-center">
@@ -100,7 +100,7 @@ export default function UserDashboard() {
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-600 truncate">My Sales</dt>
+                      <dt className="text-sm font-medium text-gray-800 truncate">My Sales</dt>
                       <dd className="text-lg font-medium text-gray-900">{stats.mySales}</dd>
                     </dl>
                   </div>
@@ -118,7 +118,7 @@ export default function UserDashboard() {
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-600 truncate">My Revenue</dt>
+                      <dt className="text-sm font-medium text-gray-800 truncate">My Revenue</dt>
                       <dd className="text-lg font-medium text-gray-900">₹{stats.myRevenue.toFixed(2)}</dd>
                     </dl>
                   </div>
@@ -136,7 +136,7 @@ export default function UserDashboard() {
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-600 truncate">My Customers</dt>
+                      <dt className="text-sm font-medium text-gray-800 truncate">My Customers</dt>
                       <dd className="text-lg font-medium text-gray-900">{stats.myCustomers}</dd>
                     </dl>
                   </div>
@@ -146,10 +146,10 @@ export default function UserDashboard() {
           </div>
         )}
 
-        <div className="mt-8">
+        <div className="mt-6 sm:mt-8">
           <Link
             href="/user/pos"
-            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+            className="inline-flex items-center justify-center w-full sm:w-auto px-6 py-3 border border-transparent text-sm sm:text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition"
           >
             Open POS System
           </Link>

@@ -115,17 +115,17 @@ export default function UserInventory() {
               <table className="min-w-full divide-y divide-gray-800">
                 <thead className="bg-white">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Product</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Quantity</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Notes</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Product</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Type</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Quantity</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Notes</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-800">
                   {inventory.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-600">
+                      <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-800">
                         No inventory records found
                       </td>
                     </tr>
@@ -135,18 +135,18 @@ export default function UserInventory() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {item.product?.name || item.productId?.product_name || 'N/A'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
                           <span className={`px-2 py-1 rounded-full text-xs ${
                             item.type === 'add' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                           }`}>
                             {item.type}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.quantity}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{item.quantity}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
                           {new Date(item.createdAt || item.date).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.notes || 'N/A'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{item.notes || 'N/A'}</td>
                       </tr>
                     ))
                   )}

@@ -315,15 +315,15 @@ export default function SuperAdminProducts() {
             <table className="min-w-full divide-y divide-gray-800">
               <thead className="bg-white">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">EAN Code</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Product Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Unit</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Price</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Available Qty</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Total Qty</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Qty Sold</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Supplier</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">EAN Code</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Product Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Unit</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Price</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Available Qty</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Total Qty</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Qty Sold</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Supplier</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-800">
@@ -366,21 +366,21 @@ export default function SuperAdminProducts() {
             <table className="min-w-full divide-y divide-gray-800">
               <thead className="bg-white">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">EAN Code</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Product Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Unit</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Price</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Available Qty</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Total Qty</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Qty Sold</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Supplier</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">EAN Code</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Product Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Unit</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Price</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Available Qty</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Total Qty</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Qty Sold</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Supplier</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-800">
                 {filteredProducts.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="px-6 py-8 text-center text-sm text-gray-600">
+                    <td colSpan="9" className="px-6 py-8 text-center text-sm text-gray-800">
                       {selectedSupplier === 'All' ? 'No products found' : `No products found for supplier: ${selectedSupplier}`}
                     </td>
                   </tr>
@@ -389,14 +389,14 @@ export default function SuperAdminProducts() {
                     const productId = product._id || product.id;
                     return (
                       <tr key={productId}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{product.EAN_code}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{product.EAN_code}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.product_name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{product.unit}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">₹{parseFloat(product.price || 0).toFixed(2)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{Math.round((product.qty || 0) - (product.qty_sold || 0))}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{Math.round(product.qty || 0)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{Math.round(product.qty_sold || 0)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{product.supplier}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{product.unit}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">₹{parseFloat(product.price || 0).toFixed(2)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{Math.round((product.qty || 0) - (product.qty_sold || 0))}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{Math.round(product.qty || 0)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{Math.round(product.qty_sold || 0)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{product.supplier}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex gap-2">
                             <button

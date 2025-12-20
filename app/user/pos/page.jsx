@@ -459,7 +459,7 @@ function POSContent({
                 placeholder="Search product..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base text-gray-800 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
               />
               <button
                 type="submit"
@@ -555,7 +555,7 @@ function POSContent({
                 ))}
               </div>
             ) : filteredProducts.length === 0 ? (
-              <div className="text-center py-8 sm:py-12 text-gray-600 text-sm sm:text-base">No products found</div>
+              <div className="text-center py-8 sm:py-12 text-gray-800 text-sm sm:text-base">No products found</div>
             ) : (
               <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
                 {filteredProducts.map((product) => {
@@ -627,7 +627,7 @@ function POSContent({
 
           <div className="flex-1 overflow-y-auto min-h-0 p-2">
             {cart.length === 0 ? (
-              <div className="p-4 text-center text-gray-600">
+              <div className="p-4 text-center text-gray-800">
                 <p>Cart is empty</p>
               </div>
             ) : (
@@ -643,7 +643,7 @@ function POSContent({
                       <div className="flex justify-between items-start mb-1.5">
                         <div className="flex-1">
                           <h4 className="font-medium text-sm text-gray-900 mb-0.5">{item.name}</h4>
-                          <p className="text-xs text-gray-600">Available: {availableStock} {item.unit}</p>
+                          <p className="text-xs text-gray-800">Available: {availableStock} {item.unit}</p>
                         </div>
                         <button
                           onClick={() => removeFromCart(item.productId)}
@@ -708,7 +708,7 @@ function POSContent({
                                   updateQuantity(item.productId, item.unit === 'kg' ? 100 : 1);
                                 }
                               }}
-                              className="w-16 text-sm text-center font-medium border border-gray-200 rounded px-1 py-1 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                              className="w-16 text-sm text-center font-medium text-gray-800 border border-gray-200 rounded px-1 py-1 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                             />
                             <span className="text-xs ml-1 text-gray-800">
                               {item.unit === 'kg' ? 'g' : 'pcs'}
@@ -763,7 +763,7 @@ function POSContent({
                 </h2>
                 <button
                   onClick={() => setShowCartMobile(false)}
-                  className="text-gray-600 hover:text-gray-800 text-2xl"
+                  className="text-gray-800 hover:text-gray-800 text-2xl"
                 >
                   ×
                 </button>
@@ -771,7 +771,7 @@ function POSContent({
 
               <div className="flex-1 overflow-y-auto min-h-0 p-3">
                 {cart.length === 0 ? (
-                  <div className="p-4 text-center text-gray-600 text-sm">
+                  <div className="p-4 text-center text-gray-800 text-sm">
                     <p>Cart is empty</p>
                   </div>
                 ) : (
@@ -787,7 +787,7 @@ function POSContent({
                           <div className="flex justify-between items-start mb-2">
                             <div className="flex-1 min-w-0">
                               <h4 className="font-medium text-sm text-gray-900 mb-0.5 truncate">{item.name}</h4>
-                              <p className="text-xs text-gray-600">Available: {availableStock} {item.unit}</p>
+                              <p className="text-xs text-gray-800">Available: {availableStock} {item.unit}</p>
                             </div>
                             <button
                               onClick={() => removeFromCart(item.productId)}
@@ -852,7 +852,7 @@ function POSContent({
                                       updateQuantity(item.productId, item.unit === 'kg' ? 100 : 1);
                                     }
                                   }}
-                                  className="w-16 text-sm text-center font-medium border border-gray-200 rounded px-1 py-1 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                                  className="w-16 text-sm text-center font-medium text-gray-800 border border-gray-200 rounded px-1 py-1 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                                 />
                                 <span className="text-xs ml-1 text-gray-800">
                                   {item.unit === 'kg' ? 'g' : 'pcs'}
@@ -922,7 +922,7 @@ function POSContent({
                         placeholder="Enter customer name"
                         value={customerData.name}
                         onChange={(e) => setCustomerData({ ...customerData, name: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                        className="w-full px-3 py-2 text-gray-800 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                       />
                     </div>
                     <div>
@@ -937,7 +937,7 @@ function POSContent({
                         maxLength="10"
                         value={customerData.mobile}
                         onChange={(e) => setCustomerData({ ...customerData, mobile: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                        className="w-full px-3 py-2 text-gray-800 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                       />
                     </div>
                     <div>
@@ -950,7 +950,7 @@ function POSContent({
                         placeholder="Enter customer address"
                         value={customerData.address}
                         onChange={(e) => setCustomerData({ ...customerData, address: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"
+                        className="w-full px-3 py-2 text-gray-800 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"
                       />
                     </div>
                     <div>
@@ -971,7 +971,7 @@ function POSContent({
                         <option value="Card">💳 Card</option>
                       </select>
                       {customerData.paymentType === '' && (
-                        <p className="mt-1 text-xs text-gray-600">Please select a payment method</p>
+                        <p className="mt-1 text-xs text-gray-800">Please select a payment method</p>
                       )}
                     </div>
                   </div>

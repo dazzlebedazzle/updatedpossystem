@@ -297,15 +297,15 @@ export default function SuperAdminReports() {
         {/* Summary Cards */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-6">
           <div className="bg-white overflow-hidden shadow rounded-lg p-6">
-            <h3 className="text-sm font-medium text-gray-600">Total Revenue</h3>
+            <h3 className="text-sm font-medium text-gray-800">Total Revenue</h3>
             <p className="mt-2 text-3xl font-bold text-gray-900">₹{summary.totalRevenue.toFixed(2)}</p>
           </div>
           <div className="bg-white overflow-hidden shadow rounded-lg p-6">
-            <h3 className="text-sm font-medium text-gray-600">Total Sales</h3>
+            <h3 className="text-sm font-medium text-gray-800">Total Sales</h3>
             <p className="mt-2 text-3xl font-bold text-gray-900">{summary.totalSales}</p>
           </div>
           <div className="bg-white overflow-hidden shadow rounded-lg p-6">
-            <h3 className="text-sm font-medium text-gray-600">Total Items Sold</h3>
+            <h3 className="text-sm font-medium text-gray-800">Total Items Sold</h3>
             <p className="mt-2 text-3xl font-bold text-gray-900">{summary.totalItems}</p>
           </div>
         </div>
@@ -313,11 +313,11 @@ export default function SuperAdminReports() {
         {/* Sales Table */}
         {loading ? (
           <div className="bg-white shadow rounded-lg p-8 text-center">
-            <div className="text-gray-600">Loading...</div>
+            <div className="text-gray-800">Loading...</div>
           </div>
         ) : filteredSales.length === 0 ? (
           <div className="bg-white shadow rounded-lg p-8 text-center">
-            <div className="text-gray-600">No sales found for the selected date range.</div>
+            <div className="text-gray-800">No sales found for the selected date range.</div>
           </div>
         ) : (
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
@@ -325,13 +325,13 @@ export default function SuperAdminReports() {
               <table className="min-w-full divide-y divide-gray-800">
                 <thead className="bg-white">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Sale ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Customer Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Customer Mobile</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Items</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Total</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Payment Method</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Sale ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Customer Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Customer Mobile</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Items</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Total</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Payment Method</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-800">
@@ -340,16 +340,16 @@ export default function SuperAdminReports() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {(sale._id || sale.id || '').toString().substring(0, 8)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
                         {new Date(sale.createdAt || sale.date).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
                         {sale.customerName || 'N/A'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
                         {sale.customerMobile || 'N/A'}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="px-6 py-4 text-sm text-gray-800">
                         <div className="max-w-xs">
                           {sale.items?.map((item, index) => (
                             <div key={index} className="text-xs">
@@ -361,7 +361,7 @@ export default function SuperAdminReports() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         ₹{sale.total?.toFixed(2) || '0.00'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
                         {sale.paymentMethod || 'N/A'}
                       </td>
                     </tr>

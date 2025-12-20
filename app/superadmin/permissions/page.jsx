@@ -116,7 +116,7 @@ export default function SuperAdminPermissions() {
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">Users & Their Permissions</h3>
-              <p className="mt-1 text-sm text-gray-600">Manage CRUD permissions for each user</p>
+              <p className="mt-1 text-sm text-gray-800">Manage CRUD permissions for each user</p>
             </div>
             <ul className="divide-y divide-gray-800">
               {users.map((user) => {
@@ -139,7 +139,7 @@ export default function SuperAdminPermissions() {
                               {user.role}
                             </span>
                           </div>
-                          <p className="mt-1 text-sm text-gray-600">{user.email}</p>
+                          <p className="mt-1 text-sm text-gray-800">{user.email}</p>
                           <div className="mt-2">
                             {hasAllPerms ? (
                               <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
@@ -188,7 +188,7 @@ export default function SuperAdminPermissions() {
                   <h3 className="text-xl font-bold text-gray-900">
                     Edit Permissions - {selectedUser.name}
                   </h3>
-                  <p className="text-sm text-gray-600 mt-1">{selectedUser.email} ({selectedUser.role})</p>
+                  <p className="text-sm text-gray-800 mt-1">{selectedUser.email} ({selectedUser.role})</p>
                 </div>
                 <button
                   onClick={() => {

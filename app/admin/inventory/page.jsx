@@ -57,61 +57,115 @@ export default function AdminInventory() {
 
   return (
     <Layout userRole="admin">
-      <div className="px-4 py-6 sm:px-0">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Inventory Management</h1>
+      <div className="px-2 py-4 sm:px-4 sm:py-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Inventory Management</h1>
           <button
             onClick={() => setShowModal(true)}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
+            className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm sm:text-base"
           >
             Update Inventory
           </button>
         </div>
 
         {loading ? (
-          <div>Loading...</div>
+          <div className="text-center py-8">Loading...</div>
         ) : (
-          <div className="bg-white shadow overflow-hidden sm:rounded-md">
-            <table className="min-w-full divide-y divide-gray-800">
-              <thead className="bg-white">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-9000 uppercase tracking-wider">Product</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-9000 uppercase tracking-wider">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-9000 uppercase tracking-wider">Quantity</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-9000 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-9000 uppercase tracking-wider">Notes</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-800">
-                {inventory.map((item) => (
-                  <tr key={item.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {item.product?.name || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-9000">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden md:block bg-white shadow overflow-hidden sm:rounded-md">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Product</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Type</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Quantity</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Date</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {inventory.map((item) => (
+                      <tr key={item.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {item.product?.name || 'N/A'}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            item.type === 'add' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            {item.type}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{item.quantity}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {new Date(item.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-900">{item.notes}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-4">
+              {inventory.map((item) => (
+                <div key={item.id} className="bg-white shadow rounded-lg p-4 border border-gray-200">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <h3 className="text-base font-semibold text-gray-900 mb-1">
+                        {item.product?.name || 'N/A'}
+                      </h3>
+                      <span className={`inline-block px-2 py-1 rounded-full text-xs ${
                         item.type === 'add' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                       }`}>
                         {item.type}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-9000">{item.quantity}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-9000">
-                      {new Date(item.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-9000">{item.notes}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                    <span className="text-lg font-bold text-gray-900">{item.quantity}</span>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div>
+                      <p className="text-gray-800">Date</p>
+                      <p className="font-medium text-gray-900">
+                        {new Date(item.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    {item.notes && (
+                      <div>
+                        <p className="text-gray-800">Notes</p>
+                        <p className="font-medium text-gray-900">{item.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
 
         {showModal && (
-          <div className="fixed inset-0 bg-white bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">Update Inventory</h3>
-              <form onSubmit={handleUpdateInventory} className="space-y-4">
+          <>
+            <div 
+              className="fixed inset-0 bg-black/50 z-50"
+              onClick={() => setShowModal(false)}
+            ></div>
+            <div className="fixed inset-0 flex items-center justify-center z-50 p-4 overflow-y-auto">
+              <div className="relative w-full max-w-md bg-white rounded-lg shadow-xl p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg sm:text-xl font-bold text-gray-900">Update Inventory</h3>
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="text-gray-800 hover:text-gray-900 text-2xl leading-none"
+                    aria-label="Close"
+                  >
+                    ×
+                  </button>
+                </div>
+                <form onSubmit={handleUpdateInventory} className="space-y-4" onClick={(e) => e.stopPropagation()}>
                 <div>
                   <label className="block text-sm font-medium text-gray-900">Product</label>
                   <select
@@ -157,24 +211,25 @@ export default function AdminInventory() {
                     className="mt-1 block w-full border border-gray-200 rounded-md px-3 py-2"
                   />
                 </div>
-                <div className="flex justify-end space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowModal(false)}
-                    className="px-4 py-2 bg-white text-gray-900 rounded hover:bg-white"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-                  >
-                    Update
-                  </button>
-                </div>
-              </form>
+                  <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t">
+                    <button
+                      type="button"
+                      onClick={() => setShowModal(false)}
+                      className="w-full sm:w-auto px-4 py-2 bg-gray-100 text-gray-900 rounded-lg hover:bg-gray-200 transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+                    >
+                      Update
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
-          </div>
+          </>
         )}
       </div>
     </Layout>

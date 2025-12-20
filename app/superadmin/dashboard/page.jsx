@@ -97,13 +97,13 @@ export default function SuperAdminDashboard() {
 
   return (
     <Layout userRole="superadmin">
-      <div className="px-4 py-6 sm:px-0">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Super Admin Dashboard</h1>
+      <div className="px-2 py-4 sm:px-4 sm:py-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">Super Admin Dashboard</h1>
 
         {loading ? (
-          <div>Loading...</div>
+          <div className="text-center py-8">Loading...</div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+          <div className="grid grid-cols-1 gap-4 sm:gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-6 sm:mb-8">
             <div className="bg-white overflow-hidden shadow rounded-lg">
               <div className="p-5">
                 <div className="flex items-center">
@@ -114,7 +114,7 @@ export default function SuperAdminDashboard() {
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-600 truncate">Total Users</dt>
+                      <dt className="text-sm font-medium text-gray-800 truncate">Total Users</dt>
                       <dd className="text-lg font-medium text-gray-900">{stats.totalUsers}</dd>
                     </dl>
                   </div>
@@ -132,7 +132,7 @@ export default function SuperAdminDashboard() {
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-600 truncate">Total Products</dt>
+                      <dt className="text-sm font-medium text-gray-800 truncate">Total Products</dt>
                       <dd className="text-lg font-medium text-gray-900">{stats.totalProducts}</dd>
                     </dl>
                   </div>
@@ -150,7 +150,7 @@ export default function SuperAdminDashboard() {
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-600 truncate">Total Sales</dt>
+                      <dt className="text-sm font-medium text-gray-800 truncate">Total Sales</dt>
                       <dd className="text-lg font-medium text-gray-900">{stats.totalSales}</dd>
                     </dl>
                   </div>
@@ -168,7 +168,7 @@ export default function SuperAdminDashboard() {
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-600 truncate">Total Revenue</dt>
+                      <dt className="text-sm font-medium text-gray-800 truncate">Total Revenue</dt>
                       <dd className="text-lg font-medium text-gray-900">₹{stats.totalRevenue.toFixed(2)}</dd>
                     </dl>
                   </div>
@@ -179,36 +179,36 @@ export default function SuperAdminDashboard() {
         )}
 
         {/* Period Selector */}
-        <div className="mb-6 bg-white shadow rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Chart Period</h2>
-            <div className="flex gap-2">
+        <div className="mb-4 sm:mb-6 bg-white shadow rounded-lg p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900">Chart Period</h2>
+            <div className="flex gap-2 w-full sm:w-auto">
               <button
                 onClick={() => setPeriod('daily')}
-                className={`px-4 py-2 rounded-lg font-medium transition ${
+                className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg font-medium transition text-sm sm:text-base ${
                   period === 'daily'
                     ? 'bg-indigo-600 text-white'
-                    : 'bg-white text-gray-800 hover:bg-white'
+                    : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                 }`}
               >
                 Daily
               </button>
               <button
                 onClick={() => setPeriod('monthly')}
-                className={`px-4 py-2 rounded-lg font-medium transition ${
+                className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg font-medium transition text-sm sm:text-base ${
                   period === 'monthly'
                     ? 'bg-indigo-600 text-white'
-                    : 'bg-white text-gray-800 hover:bg-white'
+                    : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                 }`}
               >
                 Monthly
               </button>
               <button
                 onClick={() => setPeriod('yearly')}
-                className={`px-4 py-2 rounded-lg font-medium transition ${
+                className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg font-medium transition text-sm sm:text-base ${
                   period === 'yearly'
                     ? 'bg-indigo-600 text-white'
-                    : 'bg-white text-gray-800 hover:bg-white'
+                    : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                 }`}
               >
                 Yearly
@@ -218,16 +218,16 @@ export default function SuperAdminDashboard() {
         </div>
 
         {/* Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Sales Chart */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">
               Sales ({period.charAt(0).toUpperCase() + period.slice(1)})
             </h3>
             {chartLoading ? (
-              <div className="h-64 flex items-center justify-center text-gray-600">Loading chart data...</div>
+              <div className="h-64 flex items-center justify-center text-gray-800">Loading chart data...</div>
             ) : salesData.length === 0 ? (
-              <div className="h-64 flex items-center justify-center text-gray-600">No sales data available</div>
+              <div className="h-64 flex items-center justify-center text-gray-800">No sales data available</div>
             ) : (
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={salesData}>
@@ -259,16 +259,16 @@ export default function SuperAdminDashboard() {
           </div>
 
           {/* Revenue Chart */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">
               Revenue ({period.charAt(0).toUpperCase() + period.slice(1)})
             </h3>
             {chartLoading ? (
-              <div className="h-64 flex items-center justify-center text-gray-600">Loading chart data...</div>
+              <div className="h-64 flex items-center justify-center text-gray-800">Loading chart data...</div>
             ) : revenueData.length === 0 ? (
-              <div className="h-64 flex items-center justify-center text-gray-600">No revenue data available</div>
+              <div className="h-64 flex items-center justify-center text-gray-800">No revenue data available</div>
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={revenueData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
@@ -292,14 +292,14 @@ export default function SuperAdminDashboard() {
 
           {/* Daily Customers Chart */}
           {period === 'daily' && (
-            <div className="bg-white shadow rounded-lg p-6 lg:col-span-2">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Daily Total Customers</h3>
+            <div className="bg-white shadow rounded-lg p-4 sm:p-6 lg:col-span-2">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Daily Total Customers</h3>
               {chartLoading ? (
-                <div className="h-64 flex items-center justify-center text-gray-600">Loading chart data...</div>
+                <div className="h-64 flex items-center justify-center text-gray-800">Loading chart data...</div>
               ) : customersData.length === 0 ? (
-                <div className="h-64 flex items-center justify-center text-gray-600">No customer data available</div>
+                <div className="h-64 flex items-center justify-center text-gray-800">No customer data available</div>
               ) : (
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={customersData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis

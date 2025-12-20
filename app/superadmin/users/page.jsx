@@ -219,7 +219,7 @@ export default function SuperAdminUsers() {
                             {user.role}
                           </span>
                         </div>
-                        <p className="mt-1 text-sm text-gray-600">{user.email}</p>
+                        <p className="mt-1 text-sm text-gray-800">{user.email}</p>
                         {user.supplier && (
                           <p className="mt-1 text-xs text-gray-800">Supplier: {user.supplier}</p>
                         )}
@@ -325,7 +325,7 @@ export default function SuperAdminUsers() {
                       Agent
                     </button>
                   </div>
-                  <p className="mt-2 text-xs text-gray-600">
+                  <p className="mt-2 text-xs text-gray-800">
                     {formData.role === 'admin' 
                       ? 'Admin can manage products, sales, customers, and inventory'
                       : 'Agent can access POS interface and view personal sales'}
@@ -349,7 +349,7 @@ export default function SuperAdminUsers() {
                         </option>
                       ))}
                     </select>
-                    <p className="mt-1 text-xs text-gray-600">
+                    <p className="mt-1 text-xs text-gray-800">
                       Each supplier name must be unique. Select from the predefined list.
                     </p>
                   </div>
@@ -442,7 +442,7 @@ export default function SuperAdminUsers() {
                     minLength={6}
                     className="block w-full border border-gray-200 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
-                  <p className="mt-1 text-xs text-gray-600">
+                  <p className="mt-1 text-xs text-gray-800">
                     Leave blank to keep current password. Minimum 6 characters if changing.
                   </p>
                 </div>
@@ -478,7 +478,7 @@ export default function SuperAdminUsers() {
                       Agent
                     </button>
                   </div>
-                  <p className="mt-2 text-xs text-gray-600">
+                  <p className="mt-2 text-xs text-gray-800">
                     {editFormData.role === 'admin' 
                       ? 'Admin can manage products, sales, customers, and inventory'
                       : 'Agent can access POS interface and view personal sales'}
@@ -502,7 +502,7 @@ export default function SuperAdminUsers() {
                         </option>
                       ))}
                     </select>
-                    <p className="mt-1 text-xs text-gray-600">
+                    <p className="mt-1 text-xs text-gray-800">
                       Each supplier name must be unique. Select from the predefined list.
                     </p>
                   </div>

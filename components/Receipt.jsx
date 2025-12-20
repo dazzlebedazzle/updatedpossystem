@@ -48,14 +48,58 @@ export default function Receipt({ saleData, onClose }) {
     // Get sanitized HTML
     const sanitizedHTML = clonedContent.innerHTML;
     
-    const windowPrint = window.open('', '', 'width=800,height=600');
-    
     // Escape all user data before inserting
     const safeReceiptNumber = escapeHTML(saleData.receiptNumber || '');
     
+    // Use the same approach for both Windows and Android - direct print
+    const windowPrint = window.open('', '_blank', 'width=800,height=600');
+    
+    // If popup is blocked, use current window
+    if (!windowPrint) {
+      // Fallback: print from current window
+      const printStyles = document.createElement('style');
+      printStyles.innerHTML = `
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .print-content, .print-content * {
+            visibility: visible;
+          }
+          .print-content {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+        }
+      `;
+      document.head.appendChild(printStyles);
+      
+      const tempDiv = document.createElement('div');
+      tempDiv.className = 'print-content';
+      tempDiv.innerHTML = sanitizedHTML;
+      document.body.appendChild(tempDiv);
+      
+      window.print();
+      
+      setTimeout(() => {
+        if (document.body.contains(tempDiv)) {
+          document.body.removeChild(tempDiv);
+        }
+        if (document.head.contains(printStyles)) {
+          document.head.removeChild(printStyles);
+        }
+      }, 1000);
+      return;
+    }
+    
     windowPrint.document.write(`
+      <!DOCTYPE html>
       <html>
         <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Receipt - ${safeReceiptNumber}</title>
           <style>
             * {
@@ -178,26 +222,45 @@ export default function Receipt({ saleData, onClose }) {
             @media print {
               body {
                 padding: 0;
+                margin: 0;
               }
               .no-print {
                 display: none;
+              }
+              @page {
+                margin: 0.5cm;
+                size: auto;
+              }
+            }
+            @media screen {
+              body {
+                padding: 20px;
               }
             }
           </style>
         </head>
         <body>
           ${sanitizedHTML}
+          <script>
+            // Auto-trigger print dialog immediately (works on both Windows and Android)
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+                // Close window after print dialog is shown
+                // Note: window.close() may not work if user cancels print
+                window.addEventListener('afterprint', function() {
+                  setTimeout(function() {
+                    window.close();
+                  }, 100);
+                });
+              }, 300);
+            };
+          </script>
         </body>
       </html>
     `);
     
     windowPrint.document.close();
-    windowPrint.focus();
-    
-    setTimeout(() => {
-      windowPrint.print();
-      windowPrint.close();
-    }, 250);
   }, [saleData]);
 
   // Detect mobile device
@@ -214,7 +277,7 @@ export default function Receipt({ saleData, onClose }) {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Auto-trigger print dialog only on desktop
+  // Auto-trigger print dialog only on desktop (not mobile)
   useEffect(() => {
     if (!isMobile) {
       const timer = setTimeout(() => {
@@ -513,31 +576,19 @@ export default function Receipt({ saleData, onClose }) {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3 p-4 bg-white border-t">
-            {!isMobile ? (
-              <button
-                onClick={handlePrint}
-                className="flex-1 bg-green-600 text-white py-2.5 px-4 rounded-lg hover:bg-green-700 font-medium transition flex items-center justify-center gap-2"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                </svg>
-                Print Receipt
-              </button>
-            ) : (
-              <button
-                onClick={handleSavePDF}
-                className="flex-1 bg-blue-600 text-white py-2.5 px-4 rounded-lg hover:bg-blue-700 font-medium transition flex items-center justify-center gap-2"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Save as PDF
-              </button>
-            )}
+          <div className="flex flex-col sm:flex-row gap-3 p-4 bg-white border-t">
+            <button
+              onClick={handlePrint}
+              className="flex-1 bg-green-600 text-white py-2.5 px-4 rounded-lg hover:bg-green-700 font-medium transition flex items-center justify-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              Print Receipt
+            </button>
             <button
               onClick={handleSavePDF}
-              className={`flex-1 bg-indigo-600 text-white py-2.5 px-4 rounded-lg hover:bg-indigo-700 font-medium transition flex items-center justify-center gap-2 ${!isMobile ? '' : 'hidden'}`}
+              className="flex-1 bg-indigo-600 text-white py-2.5 px-4 rounded-lg hover:bg-indigo-700 font-medium transition flex items-center justify-center gap-2"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -546,7 +597,7 @@ export default function Receipt({ saleData, onClose }) {
             </button>
             <button
               onClick={onClose}
-              className="flex-1 bg-white text-gray-800 py-2.5 px-4 rounded-lg hover:bg-white font-medium transition"
+              className="flex-1 bg-gray-100 text-gray-800 py-2.5 px-4 rounded-lg hover:bg-gray-200 font-medium transition border border-gray-200"
             >
               Close
             </button>
