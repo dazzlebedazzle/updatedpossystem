@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
+import { PageLoader } from '@/components/Loader';
 
 export default function AdminCustomers() {
   const [customers, setCustomers] = useState([]);
@@ -63,7 +64,7 @@ export default function AdminCustomers() {
         </div>
 
         {loading ? (
-          <div className="text-center py-8">Loading...</div>
+          <PageLoader message="Loading customers..." />
         ) : (
           <>
             {/* Desktop Table View */}

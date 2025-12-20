@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Layout from '@/components/Layout';
 import { toast } from '@/lib/toast';
 import { suppliers } from '@/lib/suppliers';
+import LoadingButton from '@/components/LoadingButton';
 
 export default function SuperAdminProducts() {
   const [products, setProducts] = useState([]);
@@ -645,13 +646,14 @@ export default function SuperAdminProducts() {
                   >
                     Cancel
                   </button>
-                  <button
+                  <LoadingButton
                     type="submit"
-                    disabled={uploading}
-                    className="px-3 py-1.5 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    loading={uploading}
+                    loadingText="Saving..."
+                    className="px-3 py-1.5 text-sm"
                   >
-                    {uploading ? 'Saving...' : (editingProductId ? 'Update' : 'Create')}
-                  </button>
+                    {editingProductId ? 'Update' : 'Create'}
+                  </LoadingButton>
                 </div>
               </form>
             </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { getDefaultPermissions } from '@/lib/permissions';
+import { PageLoader } from '@/components/Loader';
 import { toast } from '@/lib/toast';
 import { suppliers } from '@/lib/suppliers';
 
@@ -199,7 +200,7 @@ export default function SuperAdminUsers() {
         </div>
 
         {loading ? (
-          <div>Loading...</div>
+          <PageLoader message="Loading users..." />
         ) : (
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <ul className="divide-y divide-gray-800">

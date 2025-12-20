@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, createContext, useContext } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
+import { PageLoader } from './Loader';
 
 // Create a context for sidebar state
 const SidebarContext = createContext({
@@ -101,7 +102,7 @@ export default function Layout({ children, userRole, userName }) {
   };
 
   if (!user) {
-    return <div>Loading...</div>;
+    return <PageLoader fullScreen={true} />;
   }
 
   return (

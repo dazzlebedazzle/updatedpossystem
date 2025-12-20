@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Layout from '@/components/Layout';
 import jsPDF from 'jspdf';
+import { PageLoader } from '@/components/Loader';
 
 export default function SuperAdminReports() {
   const [sales, setSales] = useState([]);
@@ -312,9 +313,7 @@ export default function SuperAdminReports() {
 
         {/* Sales Table */}
         {loading ? (
-          <div className="bg-white shadow rounded-lg p-8 text-center">
-            <div className="text-gray-800">Loading...</div>
-          </div>
+          <PageLoader message="Loading reports..." />
         ) : filteredSales.length === 0 ? (
           <div className="bg-white shadow rounded-lg p-8 text-center">
             <div className="text-gray-800">No sales found for the selected date range.</div>

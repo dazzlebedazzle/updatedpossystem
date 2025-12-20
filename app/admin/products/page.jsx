@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Layout from '@/components/Layout';
+import { PageLoader } from '@/components/Loader';
+import LoadingButton from '@/components/LoadingButton';
 
 export default function AdminProducts() {
   const [products, setProducts] = useState([]);
@@ -155,7 +157,7 @@ export default function AdminProducts() {
         </div>
 
         {loading ? (
-          <div className="text-center py-8">Loading...</div>
+          <PageLoader message="Loading products..." />
         ) : (
           <>
             {/* Desktop Table View */}
@@ -417,13 +419,14 @@ export default function AdminProducts() {
                     >
                       Cancel
                     </button>
-                    <button
+                    <LoadingButton
                       type="submit"
-                      disabled={uploading}
-                      className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                      loading={uploading}
+                      loadingText="Uploading..."
+                      className="w-full sm:w-auto"
                     >
-                      {uploading ? 'Uploading...' : 'Create'}
-                    </button>
+                      Create
+                    </LoadingButton>
                   </div>
                 </form>
               </div>

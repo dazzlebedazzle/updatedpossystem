@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import Link from 'next/link';
 import { authenticatedFetch } from '@/lib/api-client';
+import { PageLoader } from '@/components/Loader';
+import LoadingButton from '@/components/LoadingButton';
 
 export default function UserDashboard() {
   const [stats, setStats] = useState({
@@ -73,21 +75,21 @@ export default function UserDashboard() {
               </p>
             )}
           </div>
-          <button
+          <LoadingButton
             onClick={() => {
               setLoading(true);
               fetchStats();
             }}
-            className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm sm:text-base"
+            loading={loading}
+            loadingText="Refreshing..."
+            className="w-full sm:w-auto text-sm sm:text-base"
           >
             Refresh
-          </button>
+          </LoadingButton>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-gray-800">Loading...</div>
-          </div>
+          <PageLoader message="Loading dashboard..." />
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <div className="bg-white overflow-hidden shadow rounded-lg">

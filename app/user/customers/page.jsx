@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
 import { authenticatedFetch } from '@/lib/api-client';
+import { PageLoader } from '@/components/Loader';
 
 export default function UserCustomers() {
   const [customers, setCustomers] = useState([]);
@@ -162,7 +163,7 @@ export default function UserCustomers() {
         </div>
 
         {loading ? (
-          <div>Loading...</div>
+          <PageLoader message="Loading customers..." />
         ) : (
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <div className="overflow-x-auto">

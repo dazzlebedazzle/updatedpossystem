@@ -14,6 +14,7 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
+import { PageLoader, Loader } from '@/components/Loader';
 
 export default function SuperAdminDashboard() {
   const [stats, setStats] = useState({
@@ -101,7 +102,7 @@ export default function SuperAdminDashboard() {
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">Super Admin Dashboard</h1>
 
         {loading ? (
-          <div className="text-center py-8">Loading...</div>
+          <PageLoader message="Loading dashboard..." />
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-6 sm:mb-8">
             <div className="bg-white overflow-hidden shadow rounded-lg">
@@ -225,7 +226,9 @@ export default function SuperAdminDashboard() {
               Sales ({period.charAt(0).toUpperCase() + period.slice(1)})
             </h3>
             {chartLoading ? (
-              <div className="h-64 flex items-center justify-center text-gray-800">Loading chart data...</div>
+              <div className="h-64 flex items-center justify-center">
+                <Loader size="lg" />
+              </div>
             ) : salesData.length === 0 ? (
               <div className="h-64 flex items-center justify-center text-gray-800">No sales data available</div>
             ) : (
@@ -264,7 +267,9 @@ export default function SuperAdminDashboard() {
               Revenue ({period.charAt(0).toUpperCase() + period.slice(1)})
             </h3>
             {chartLoading ? (
-              <div className="h-64 flex items-center justify-center text-gray-800">Loading chart data...</div>
+              <div className="h-64 flex items-center justify-center">
+                <Loader size="lg" />
+              </div>
             ) : revenueData.length === 0 ? (
               <div className="h-64 flex items-center justify-center text-gray-800">No revenue data available</div>
             ) : (
@@ -295,7 +300,9 @@ export default function SuperAdminDashboard() {
             <div className="bg-white shadow rounded-lg p-4 sm:p-6 lg:col-span-2">
               <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Daily Total Customers</h3>
               {chartLoading ? (
-                <div className="h-64 flex items-center justify-center text-gray-800">Loading chart data...</div>
+                <div className="h-64 flex items-center justify-center">
+                  <Loader size="lg" />
+                </div>
               ) : customersData.length === 0 ? (
                 <div className="h-64 flex items-center justify-center text-gray-800">No customer data available</div>
               ) : (

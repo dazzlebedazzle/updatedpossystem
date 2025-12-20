@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
+import { PageLoader } from '@/components/Loader';
 
 export default function AdminInventory() {
   const [inventory, setInventory] = useState([]);
@@ -69,7 +70,7 @@ export default function AdminInventory() {
         </div>
 
         {loading ? (
-          <div className="text-center py-8">Loading...</div>
+          <PageLoader message="Loading inventory..." />
         ) : (
           <>
             {/* Desktop Table View */}

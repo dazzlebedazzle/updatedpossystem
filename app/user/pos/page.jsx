@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Layout, { useSidebar } from '@/components/Layout';
 import { toast } from '@/lib/toast';
 import Receipt from '@/components/Receipt';
@@ -8,13 +8,30 @@ import SafeImage from '@/components/SafeImage';
 import { categories as predefinedCategories, getCategoryImage } from '@/lib/categories';
 import { authenticatedFetch } from '@/lib/api-client';
 
+const categoryIcons = {
+  'all': '🏪',
+  'almonds': '🥜',
+  'apricots': '📦',
+  'berries': '🫐',
+  'cashews': '📦',
+  'dates': '🍇',
+  'figs': '🍑',
+  'fruits': '📦',
+  'mixtures': '📦',
+  'cashew': '🥜',
+  'pistachio': '🥜',
+  'raisins': '🍇',
+  'seeds': '🌰',
+  'mixes': '🥗',
+  'general': '📦'
+};
+
 export default function UserPOS() {
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [categories, setCategories] = useState([]);
   const [showCheckoutPopup, setShowCheckoutPopup] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptData, setReceiptData] = useState(null);
@@ -27,8 +44,6 @@ export default function UserPOS() {
 
   useEffect(() => {
     fetchProducts();
-    fetchCategories();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchProducts = async () => {
@@ -73,103 +88,86 @@ export default function UserPOS() {
     }
   };
 
-  const fetchCategories = useCallback(async () => {
-    try {
-      // Use authenticatedFetch to get filtered products
-      const allProducts = products.length > 0 ? products : (await authenticatedFetch('/api/products').then(r => r.json())).products || [];
+  // Memoize unique products to avoid recalculating on every render
+  const uniqueProducts = useMemo(() => {
+    const seenKeys = new Set();
+    return products.filter(product => {
+      if (!product) return false;
+      const productId = product._id || product.id;
+      const productEAN = product.EAN_code;
+      const key = productId ? String(productId) : (productEAN ? String(productEAN) : null);
       
-      // Get unique category names from products (as they appear in database)
-      const categoryMap = {};
-      allProducts.forEach(product => {
-        const categoryName = product.category || 'general';
-        if (!categoryMap[categoryName]) {
-          categoryMap[categoryName] = {
-            name: categoryName,
-            count: 0
-          };
-        }
-        categoryMap[categoryName].count++;
-      });
-      
-      // Match with predefined categories to get images
-      const categoriesWithCount = Object.values(categoryMap).map(dbCategory => {
-        // Find matching predefined category (case-insensitive)
-        const predefinedCat = predefinedCategories.find(
-          cat => cat.name.toLowerCase() === dbCategory.name.toLowerCase()
-        );
-        
-        return {
-          name: dbCategory.name, // Use database category name for display
-          image: predefinedCat ? predefinedCat.image : getCategoryImage(dbCategory.name),
-          count: dbCategory.count
-        };
-      });
-      
-      // Add "All" category with total count
-        const allCategory = { name: 'All', count: allProducts.length };
-      setCategories([allCategory, ...categoriesWithCount]);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      const allProducts = products.length > 0 ? products : [];
-      const categoryMap = {};
-      allProducts.forEach(product => {
-        const categoryName = product.category || 'general';
-        if (!categoryMap[categoryName]) {
-          categoryMap[categoryName] = {
-            name: categoryName,
-            count: 0
-          };
-        }
-        categoryMap[categoryName].count++;
-      });
-      
-      const categoriesWithCount = Object.values(categoryMap).map(dbCategory => {
-        const predefinedCat = predefinedCategories.find(
-          cat => cat.name.toLowerCase() === dbCategory.name.toLowerCase()
-        );
-        
-        return {
-          name: dbCategory.name,
-          image: predefinedCat ? predefinedCat.image : getCategoryImage(dbCategory.name),
-          count: dbCategory.count
-        };
-      });
-      
-      const allCategory = { name: 'All', count: allProducts.length };
-      setCategories([allCategory, ...categoriesWithCount]);
-    }
+      if (!key || seenKeys.has(key)) return false;
+      seenKeys.add(key);
+      return true;
+    });
   }, [products]);
 
-  useEffect(() => {
-    if (products.length > 0) {
-      fetchCategories();
-    }
-  }, [products.length, fetchCategories]);
-
-  // Additional deduplication check (products should already be unique from fetchProducts, but this is a safety measure)
-  const seenKeys = new Set();
-  const uniqueProducts = products.filter(product => {
-    if (!product) return false;
-    const productId = product._id || product.id;
-    const productEAN = product.EAN_code;
-    const key = productId ? String(productId) : (productEAN ? String(productEAN) : null);
+  // Memoize categories calculation
+  const categories = useMemo(() => {
+    if (uniqueProducts.length === 0) return [{ name: 'All', count: 0 }];
     
-    if (!key || seenKeys.has(key)) return false;
-    seenKeys.add(key);
-    return true;
-  });
+    const categoryMap = {};
+    uniqueProducts.forEach(product => {
+      const categoryName = product.category || 'general';
+      if (!categoryMap[categoryName]) {
+        categoryMap[categoryName] = {
+          name: categoryName,
+          count: 0
+        };
+      }
+      categoryMap[categoryName].count++;
+    });
+    
+    const categoriesWithCount = Object.values(categoryMap).map(dbCategory => {
+      const predefinedCat = predefinedCategories.find(
+        cat => cat.name.toLowerCase() === dbCategory.name.toLowerCase()
+      );
+      
+      return {
+        name: dbCategory.name,
+        image: predefinedCat ? predefinedCat.image : getCategoryImage(dbCategory.name),
+        count: dbCategory.count
+      };
+    });
+    
+    const allCategory = { name: 'All', count: uniqueProducts.length };
+    return [allCategory, ...categoriesWithCount];
+  }, [uniqueProducts]);
 
-  const filteredProducts = uniqueProducts.filter(product => {
-    if (!product) return false;
-    const productName = (product.product_name || product.name || '').toLowerCase();
-    const productEAN = (product.EAN_code || '').toString().toLowerCase();
-    const searchLower = searchTerm.toLowerCase();
-    const matchesSearch = productName.includes(searchLower) || productEAN.includes(searchLower);
-    const matchesCategory = selectedCategory === 'All' || (product.category || 'general').toLowerCase() === selectedCategory.toLowerCase();
-    return matchesSearch && matchesCategory;
-  });
+  // Memoize filtered products with debounced search
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
-  const addToCart = (product) => {
+  const filteredProducts = useMemo(() => {
+    if (!debouncedSearchTerm && selectedCategory === 'All') {
+      return uniqueProducts;
+    }
+    
+    const searchLower = debouncedSearchTerm.toLowerCase();
+    const categoryLower = selectedCategory.toLowerCase();
+    
+    return uniqueProducts.filter(product => {
+      if (!product) return false;
+      
+      const matchesCategory = selectedCategory === 'All' || (product.category || 'general').toLowerCase() === categoryLower;
+      if (!matchesCategory) return false;
+      
+      if (!debouncedSearchTerm) return true;
+      
+      const productName = (product.product_name || product.name || '').toLowerCase();
+      const productEAN = (product.EAN_code || '').toString().toLowerCase();
+      return productName.includes(searchLower) || productEAN.includes(searchLower);
+    });
+  }, [uniqueProducts, debouncedSearchTerm, selectedCategory]);
+
+  const addToCart = useCallback((product) => {
     const availableStock = (product.qty || 0) - (product.qty_sold || 0);
     if (availableStock <= 0) {
       toast.error('Product out of stock');
@@ -180,49 +178,51 @@ export default function UserPOS() {
     const unit = product.unit || 'kg';
     const defaultQty = unit === 'kg' ? 100 : 1;
 
-    const existingItem = cart.find(item => item.productId === productId);
-    if (existingItem) {
-      // Convert cart quantity to same unit as stock for comparison
-      const newQtyInStockUnit = unit === 'kg' ? (existingItem.quantity + defaultQty) / 1000 : existingItem.quantity + defaultQty;
-      
-      if (newQtyInStockUnit > availableStock) {
-        toast.error(`Insufficient stock. Only ${availableStock} ${unit} available`);
-        return;
+    setCart(prevCart => {
+      const existingItem = prevCart.find(item => item.productId === productId);
+      if (existingItem) {
+        // Convert cart quantity to same unit as stock for comparison
+        const newQtyInStockUnit = unit === 'kg' ? (existingItem.quantity + defaultQty) / 1000 : existingItem.quantity + defaultQty;
+        
+        if (newQtyInStockUnit > availableStock) {
+          toast.error(`Insufficient stock. Only ${availableStock} ${unit} available`);
+          return prevCart;
+        }
+        toast.success('Quantity updated in cart');
+        return prevCart.map(item =>
+          item.productId === productId
+            ? { ...item, quantity: item.quantity + defaultQty }
+            : item
+        );
+      } else {
+        // Check if initial quantity exceeds stock
+        const initialQtyInStockUnit = unit === 'kg' ? defaultQty / 1000 : defaultQty;
+        if (initialQtyInStockUnit > availableStock) {
+          toast.error(`Insufficient stock. Only ${availableStock} ${unit} available`);
+          return prevCart;
+        }
+        
+        toast.success('Product added to cart');
+        return [...prevCart, {
+          productId: productId,
+          name: product.product_name || product.name,
+          price: product.price || 0,
+          quantity: defaultQty,
+          unit: unit,
+          profit: product.profit || 0,
+          product_code: product.EAN_code || '',
+          discount: product.discount || 0
+        }];
       }
-      setCart(cart.map(item =>
-        item.productId === productId
-          ? { ...item, quantity: item.quantity + defaultQty }
-          : item
-      ));
-      toast.success('Quantity updated in cart');
-    } else {
-      // Check if initial quantity exceeds stock
-      const initialQtyInStockUnit = unit === 'kg' ? defaultQty / 1000 : defaultQty;
-      if (initialQtyInStockUnit > availableStock) {
-        toast.error(`Insufficient stock. Only ${availableStock} ${unit} available`);
-        return;
-      }
-      
-      setCart([...cart, {
-        productId: productId,
-        name: product.product_name || product.name,
-        price: product.price || 0,
-        quantity: defaultQty,
-        unit: unit,
-        profit: product.profit || 0,
-        product_code: product.EAN_code || '',
-        discount: product.discount || 0
-      }]);
-      toast.success('Product added to cart');
-    }
-  };
+    });
+  }, []);
 
-  const removeFromCart = (productId) => {
-    setCart(cart.filter(item => item.productId !== productId));
+  const removeFromCart = useCallback((productId) => {
+    setCart(prevCart => prevCart.filter(item => item.productId !== productId));
     toast.success('Item removed from cart');
-  };
+  }, []);
 
-  const updateQuantity = (productId, quantity) => {
+  const updateQuantity = useCallback((productId, quantity) => {
     // Allow 0 or empty quantity so user can type any value
     // Don't remove item from cart, just update the quantity
     // If quantity is negative or invalid, set to 0 to allow user to type
@@ -230,37 +230,42 @@ export default function UserPOS() {
       quantity = 0;
     }
     
-    const product = products.find(p => (p._id || p.id) === productId);
-    const cartItem = cart.find(item => item.productId === productId);
-    
-    // Only validate stock if quantity is greater than 0
-    if (quantity > 0 && product && cartItem) {
-      const availableStock = (product.qty || 0) - (product.qty_sold || 0);
-      const unit = cartItem.unit || 'kg';
+    setCart(prevCart => {
+      const cartItem = prevCart.find(item => item.productId === productId);
+      if (!cartItem) return prevCart;
       
-      // Convert quantity to same unit as stock for comparison
-      const quantityInStockUnit = unit === 'kg' ? quantity / 1000 : quantity;
-      
-      if (quantityInStockUnit > availableStock) {
-        toast.error(`Only ${availableStock} ${unit} available in stock`);
-        return;
+      // Only validate stock if quantity is greater than 0
+      if (quantity > 0) {
+        const product = uniqueProducts.find(p => (p._id || p.id) === productId);
+        if (product) {
+          const availableStock = (product.qty || 0) - (product.qty_sold || 0);
+          const unit = cartItem.unit || 'kg';
+          
+          // Convert quantity to same unit as stock for comparison
+          const quantityInStockUnit = unit === 'kg' ? quantity / 1000 : quantity;
+          
+          if (quantityInStockUnit > availableStock) {
+            toast.error(`Only ${availableStock} ${unit} available in stock`);
+            return prevCart;
+          }
+        }
       }
-    }
-    
-    // Update quantity (can be 0, which allows user to type any value)
-    setCart(cart.map(item =>
-      item.productId === productId
-        ? { ...item, quantity }
-        : item
-    ));
-  };
+      
+      // Update quantity (can be 0, which allows user to type any value)
+      return prevCart.map(item =>
+        item.productId === productId
+          ? { ...item, quantity }
+          : item
+      );
+    });
+  }, [uniqueProducts]);
 
-  const getTotal = () => {
+  const getTotal = useMemo(() => {
     return cart.reduce((sum, item) => {
       const qtyInUnit = item.unit === 'kg' ? item.quantity / 1000 : item.quantity;
       return sum + (item.price * qtyInUnit);
     }, 0);
-  };
+  }, [cart]);
 
   const handleCheckout = async () => {
     if (cart.length === 0) {
@@ -334,8 +339,8 @@ export default function UserPOS() {
             price: item.price,
             total: (item.unit === 'kg' ? item.quantity / 1000 : item.quantity) * item.price
           })),
-          subtotal: getTotal(),
-          total: getTotal()
+          subtotal: getTotal,
+          total: getTotal
         };
         
         setReceiptData(receipt);
@@ -354,34 +359,16 @@ export default function UserPOS() {
     }
   };
 
-  const categoryIcons = {
-    'all': '🏪',
-    'almonds': '🥜',
-    'apricots': '📦',
-    'berries': '🫐',
-    'cashews': '📦',
-    'dates': '🍇',
-    'figs': '🍑',
-    'fruits': '📦',
-    'mixtures': '📦',
-    'cashew': '🥜',
-    'pistachio': '🥜',
-    'raisins': '🍇',
-    'seeds': '🌰',
-    'mixes': '🥗',
-    'general': '📦'
-  };
-
-  const getCategoryIcon = (categoryName) => {
+  const getCategoryIcon = useCallback((categoryName) => {
     return categoryIcons[categoryName.toLowerCase()] || '📦';
-  };
+  }, []);
 
-  const getProductImage = (product) => {
+  const getProductImage = useCallback((product) => {
     if (product.images) {
       return `/assets/category_images/${product.images}`;
     }
     return null;
-  };
+  }, []);
 
   return (
     <Layout userRole="user">
@@ -736,7 +723,7 @@ function POSContent({
             <div className="mb-2">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-base sm:text-lg font-bold text-gray-900">Total:</span>
-                <span className="text-xl sm:text-2xl font-bold text-purple-600">₹{getTotal().toFixed(2)}</span>
+                <span className="text-xl sm:text-2xl font-bold text-purple-600">₹{getTotal.toFixed(2)}</span>
               </div>
             </div>
             <button
@@ -879,7 +866,7 @@ function POSContent({
                 <div className="mb-3">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-lg font-bold text-gray-900">Total:</span>
-                    <span className="text-2xl font-bold text-purple-600">₹{getTotal().toFixed(2)}</span>
+                    <span className="text-2xl font-bold text-purple-600">₹{getTotal.toFixed(2)}</span>
                   </div>
                 </div>
                 <button

@@ -1,14 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Layout from '@/components/Layout';
 import { hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
+import { PageLoader } from '@/components/Loader';
+import LoadingButton from '@/components/LoadingButton';
 
 export default function UserProducts() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userPermissions, setUserPermissions] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 25;
   const [showModal, setShowModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -174,6 +178,19 @@ export default function UserProducts() {
   const canDelete = hasPermission(userPermissions, MODULES.PRODUCTS, OPERATIONS.DELETE);
   const canRead = hasPermission(userPermissions, MODULES.PRODUCTS, OPERATIONS.READ);
 
+  // Pagination calculations
+  const totalPages = Math.ceil(products.length / itemsPerPage);
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return products.slice(startIndex, endIndex);
+  }, [products, currentPage, itemsPerPage]);
+
+  // Reset to page 1 when products change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [products.length]);
+
   if (!canRead) {
     return (
       <Layout userRole="user">
@@ -202,62 +219,151 @@ export default function UserProducts() {
         </div>
 
         {loading ? (
-          <div>Loading...</div>
+          <PageLoader message="Loading products..." />
         ) : (
-          <div className="bg-white shadow overflow-hidden sm:rounded-md">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-800">
-                <thead className="bg-white">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">EAN Code</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Product Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Unit</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Price</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Available Qty</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Total Qty</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Qty Sold</th>
-                    {canDelete && (
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Actions</th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-800">
-                  {products.length === 0 ? (
+          <>
+            <div className="bg-white shadow overflow-hidden sm:rounded-md mb-4">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
                     <tr>
-                      <td colSpan={canDelete ? 8 : 7} className="px-6 py-4 text-center text-sm text-gray-800">
-                        No products found
-                      </td>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">EAN Code</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Product Name</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Unit</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Price</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Available Qty</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Total Qty</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Qty Sold</th>
+                      {canDelete && (
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Actions</th>
+                      )}
                     </tr>
-                  ) : (
-                    products.map((product) => {
-                      const productId = product._id || product.id;
-                      return (
-                        <tr key={productId}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{product.EAN_code}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.product_name}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{product.unit}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">₹{parseFloat(product.price || 0).toFixed(2)}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{Math.round((product.qty || 0) - (product.qty_sold || 0))}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{Math.round(product.qty || 0)}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{Math.round(product.qty_sold || 0)}</td>
-                          {canDelete && (
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <button
-                                onClick={() => handleDelete(productId)}
-                                className="text-red-600 hover:text-red-900"
-                              >
-                                Delete
-                              </button>
-                            </td>
-                          )}
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {paginatedProducts.length === 0 ? (
+                      <tr>
+                        <td colSpan={canDelete ? 8 : 7} className="px-6 py-4 text-center text-sm text-gray-800">
+                          No products found
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedProducts.map((product) => {
+                        const productId = product._id || product.id;
+                        return (
+                          <tr key={productId} className="hover:bg-gray-50">
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-800">{product.EAN_code}</td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.product_name}</td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-800">{product.unit}</td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-800">₹{parseFloat(product.price || 0).toFixed(2)}</td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-800">{Math.round((product.qty || 0) - (product.qty_sold || 0))}</td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-800">{Math.round(product.qty || 0)}</td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-800">{Math.round(product.qty_sold || 0)}</td>
+                            {canDelete && (
+                              <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                <button
+                                  onClick={() => handleDelete(productId)}
+                                  className="text-red-600 hover:text-red-900 transition"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="bg-white shadow rounded-md px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                <div className="flex-1 flex justify-between sm:hidden">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-800 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-800 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm text-gray-800">
+                      Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                      <span className="font-medium">{Math.min(currentPage * itemsPerPage, products.length)}</span> of{' '}
+                      <span className="font-medium">{products.length}</span> results
+                    </p>
+                  </div>
+                  <div>
+                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <span className="sr-only">Previous</span>
+                        <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                      
+                      {/* Page Numbers */}
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                        // Show first page, last page, current page, and pages around current
+                        if (
+                          page === 1 ||
+                          page === totalPages ||
+                          (page >= currentPage - 1 && page <= currentPage + 1)
+                        ) {
+                          return (
+                            <button
+                              key={page}
+                              onClick={() => setCurrentPage(page)}
+                              className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                                currentPage === page
+                                  ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+                                  : 'bg-white border-gray-300 text-gray-800 hover:bg-gray-50'
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          );
+                        } else if (page === currentPage - 2 || page === currentPage + 2) {
+                          return (
+                            <span key={page} className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-800">
+                              ...
+                            </span>
+                          );
+                        }
+                        return null;
+                      })}
+                      
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <span className="sr-only">Next</span>
+                        <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </nav>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {showModal && canCreate && (
@@ -418,13 +524,13 @@ export default function UserProducts() {
                   >
                     Cancel
                   </button>
-                  <button
+                  <LoadingButton
                     type="submit"
-                    disabled={uploading}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    loading={uploading}
+                    loadingText="Uploading..."
                   >
-                    {uploading ? 'Uploading...' : 'Create'}
-                  </button>
+                    Create
+                  </LoadingButton>
                 </div>
               </form>
             </div>

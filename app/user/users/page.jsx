@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
+import { PageLoader } from '@/components/Loader';
 
 export default function UserUsers() {
   const [users, setUsers] = useState([]);
@@ -58,7 +59,7 @@ export default function UserUsers() {
         </div>
 
         {loading ? (
-          <div>Loading...</div>
+          <PageLoader message="Loading users..." />
         ) : (
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <div className="overflow-x-auto">

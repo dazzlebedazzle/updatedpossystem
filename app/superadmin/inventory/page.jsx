@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
+import { PageLoader } from '@/components/Loader';
 
 export default function SuperAdminInventory() {
   const [inventory, setInventory] = useState([]);
@@ -69,7 +70,7 @@ export default function SuperAdminInventory() {
         </div>
 
         {loading ? (
-          <div>Loading...</div>
+          <PageLoader message="Loading inventory..." />
         ) : (
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <table className="min-w-full divide-y divide-gray-800">

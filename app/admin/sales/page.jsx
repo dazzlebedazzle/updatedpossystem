@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
+import { PageLoader } from '@/components/Loader';
 
 export default function AdminSales() {
   const [sales, setSales] = useState([]);
@@ -29,7 +30,7 @@ export default function AdminSales() {
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">Sales</h1>
 
         {loading ? (
-          <div className="text-center py-8">Loading...</div>
+          <PageLoader message="Loading sales..." />
         ) : (
           <>
             {/* Desktop Table View */}

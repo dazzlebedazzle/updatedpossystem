@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { generatePermission, getAllAvailablePermissions } from '@/lib/permissions';
+import { PageLoader } from '@/components/Loader';
 import { toast } from '@/lib/toast';
 
 export default function SuperAdminPermissions() {
@@ -111,7 +112,7 @@ export default function SuperAdminPermissions() {
         <h1 className="text-3xl font-bold text-gray-900 mb-6">Permissions Management (CRUD Operations)</h1>
 
         {loading ? (
-          <div>Loading...</div>
+          <PageLoader message="Loading permissions..." />
         ) : (
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <div className="px-4 py-5 sm:px-6 border-b border-gray-200">

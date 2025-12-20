@@ -5,6 +5,7 @@ import Layout from '@/components/Layout';
 import { hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
 import { authenticatedFetch } from '@/lib/api-client';
 import jsPDF from 'jspdf';
+import { PageLoader } from '@/components/Loader';
 
 export default function UserReports() {
   const [sales, setSales] = useState([]);
@@ -323,9 +324,7 @@ export default function UserReports() {
 
         {/* Sales Table */}
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-gray-800">Loading...</div>
-          </div>
+          <PageLoader message="Loading reports..." />
         ) : (
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <div className="overflow-x-auto">

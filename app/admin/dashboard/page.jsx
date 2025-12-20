@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
+import { PageLoader } from '@/components/Loader';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -49,7 +50,7 @@ export default function AdminDashboard() {
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">Admin Dashboard</h1>
 
         {loading ? (
-          <div className="text-center py-8">Loading...</div>
+          <PageLoader message="Loading dashboard..." />
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <div className="bg-white overflow-hidden shadow rounded-lg">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
+import { PageLoader } from '@/components/Loader';
 
 export default function SuperAdminSales() {
   const [sales, setSales] = useState([]);
@@ -29,7 +30,7 @@ export default function SuperAdminSales() {
         <h1 className="text-3xl font-bold text-gray-900 mb-6">All Sales</h1>
 
         {loading ? (
-          <div>Loading...</div>
+          <PageLoader message="Loading sales..." />
         ) : (
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <table className="min-w-full divide-y divide-gray-800">

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import LoadingButton from '@/components/LoadingButton';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -118,13 +119,14 @@ export default function RegisterPage() {
             />
           </div>
 
-          <button
+          <LoadingButton
             type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            loading={loading}
+            loadingText="Registering..."
+            className="w-full"
           >
-            {loading ? 'Registering...' : 'Register'}
-          </button>
+            Register
+          </LoadingButton>
         </form>
 
         <div className="mt-6 text-center">

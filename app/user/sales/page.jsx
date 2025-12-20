@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { authenticatedFetch } from '@/lib/api-client';
+import { PageLoader } from '@/components/Loader';
 
 export default function UserSales() {
   const [sales, setSales] = useState([]);
@@ -63,7 +64,7 @@ export default function UserSales() {
         </div>
 
         {loading ? (
-          <div>Loading...</div>
+          <PageLoader message="Loading sales..." />
         ) : (
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <table className="min-w-full divide-y divide-gray-800">

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { setAuthToken } from '@/lib/api-client';
+import LoadingButton from '@/components/LoadingButton';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -141,13 +142,14 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <button
+          <LoadingButton
             type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            loading={loading}
+            loadingText="Signing in..."
+            className="w-full"
           >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
+            Sign In
+          </LoadingButton>
         </form>
 
         <div className="mt-6 text-center">
