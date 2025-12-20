@@ -29,16 +29,6 @@ export default function SuperAdminDashboard() {
   const [revenueData, setRevenueData] = useState([]);
   const [customersData, setCustomersData] = useState([]);
 
-  useEffect(() => {
-    fetchStats();
-    fetchChartData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    fetchChartData();
-  }, [period, fetchChartData]);
-
   const fetchStats = async () => {
     try {
       const [usersRes, productsRes, salesRes] = await Promise.all([
@@ -81,6 +71,16 @@ export default function SuperAdminDashboard() {
       setChartLoading(false);
     }
   }, [period]);
+
+  useEffect(() => {
+    fetchStats();
+    fetchChartData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    fetchChartData();
+  }, [fetchChartData]);
 
   const formatDateLabel = (date) => {
     if (period === 'daily') {
