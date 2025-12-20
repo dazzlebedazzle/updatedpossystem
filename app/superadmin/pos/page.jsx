@@ -1,30 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import Image from 'next/image';
 import Layout, { useSidebar } from '@/components/Layout';
 import { toast } from '@/lib/toast';
 import Receipt from '@/components/Receipt';
+import SafeImage from '@/components/SafeImage';
 import { categories as predefinedCategories, getCategoryImage } from '@/lib/categories';
-
-// Image component with error handling
-const SafeImage = ({ src, alt, fill, className, fallback }) => {
-  const [hasError, setHasError] = useState(false);
-  
-  if (hasError || !src) {
-    return fallback;
-  }
-  
-  return (
-    <Image 
-      src={src} 
-      alt={alt}
-      fill={fill}
-      className={className}
-      onError={() => setHasError(true)}
-    />
-  );
-};
 
 export default function SuperAdminPOS() {
   const [products, setProducts] = useState([]);
