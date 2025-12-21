@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import Layout, { useSidebar } from '@/components/Layout';
+import Layout from '@/components/Layout';
 import { toast } from '@/lib/toast';
 import Receipt from '@/components/Receipt';
 import SafeImage from '@/components/SafeImage';
@@ -74,45 +74,59 @@ export default function SuperAdminPOS() {
     return uniqueProducts;
   };
 
-  const fetchProducts = useCallback(async () => {
-    try {
-      const response = await fetch('/api/products');
-      const data = await response.json();
-      const allProducts = data.products || [];
-      
-      // Process all products
-      const uniqueProducts = processProducts(allProducts);
-      
-      // Show first batch immediately for fast initial render
-      const initialBatch = uniqueProducts.slice(0, INITIAL_BATCH_SIZE);
-      setProducts(initialBatch);
-      setLoading(false);
-      setInitialLoadComplete(true);
-      
-      // Load remaining products in background using requestIdleCallback or setTimeout
-      if (uniqueProducts.length > INITIAL_BATCH_SIZE) {
-        // Use requestIdleCallback if available, otherwise setTimeout
-        if (typeof window !== 'undefined' && window.requestIdleCallback) {
-          window.requestIdleCallback(() => {
-            setProducts(uniqueProducts);
-          }, { timeout: 1000 });
-        } else {
-          // Fallback: load after a short delay to allow initial render
-          setTimeout(() => {
-            setProducts(uniqueProducts);
-          }, 100);
+  useEffect(() => {
+    let isMounted = true;
+    
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch('/api/products');
+        const data = await response.json();
+        const allProducts = data.products || [];
+        
+        if (!isMounted) return;
+        
+        // Process all products
+        const uniqueProducts = processProducts(allProducts);
+        
+        // Show first batch immediately for fast initial render
+        const initialBatch = uniqueProducts.slice(0, INITIAL_BATCH_SIZE);
+        setProducts(initialBatch);
+        setLoading(false);
+        setInitialLoadComplete(true);
+        
+        // Load remaining products in background using requestIdleCallback or setTimeout
+        if (uniqueProducts.length > INITIAL_BATCH_SIZE) {
+          // Use requestIdleCallback if available, otherwise setTimeout
+          if (typeof window !== 'undefined' && window.requestIdleCallback) {
+            window.requestIdleCallback(() => {
+              if (isMounted) {
+                setProducts(uniqueProducts);
+              }
+            }, { timeout: 1000 });
+          } else {
+            // Fallback: load after a short delay to allow initial render
+            setTimeout(() => {
+              if (isMounted) {
+                setProducts(uniqueProducts);
+              }
+            }, 100);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching products:', error);
+        if (isMounted) {
+          setLoading(false);
+          setInitialLoadComplete(true);
         }
       }
-    } catch (error) {
-      console.error('Error fetching products:', error);
-      setLoading(false);
-      setInitialLoadComplete(true);
-    }
-  }, []);
-
-  useEffect(() => {
+    };
+    
     fetchProducts();
-  }, [fetchProducts]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Memoize unique products to avoid recalculating on every render
   const uniqueProducts = useMemo(() => {
