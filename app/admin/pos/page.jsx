@@ -182,10 +182,16 @@ export default function AdminPOS() {
         const newQtyInStockUnit = unit === 'kg' ? (existingItem.quantity + defaultQty) / 1000 : existingItem.quantity + defaultQty;
         
         if (newQtyInStockUnit > availableStock) {
-          toast.error(`Insufficient stock. Only ${availableStock} ${unit} available`);
+          // Defer toast call to avoid state update during render
+          setTimeout(() => {
+            toast.error(`Insufficient stock. Only ${availableStock} ${unit} available`);
+          }, 0);
           return prevCart;
         }
-        toast.success('Quantity updated in cart');
+        // Defer toast call to avoid state update during render
+        setTimeout(() => {
+          toast.success('Quantity updated in cart');
+        }, 0);
         return prevCart.map(item =>
           item.productId === productId
             ? { ...item, quantity: item.quantity + defaultQty }
@@ -195,11 +201,17 @@ export default function AdminPOS() {
         // Check if initial quantity exceeds stock
         const initialQtyInStockUnit = unit === 'kg' ? defaultQty / 1000 : defaultQty;
         if (initialQtyInStockUnit > availableStock) {
-          toast.error(`Insufficient stock. Only ${availableStock} ${unit} available`);
+          // Defer toast call to avoid state update during render
+          setTimeout(() => {
+            toast.error(`Insufficient stock. Only ${availableStock} ${unit} available`);
+          }, 0);
           return prevCart;
         }
         
-        toast.success('Product added to cart');
+        // Defer toast call to avoid state update during render
+        setTimeout(() => {
+          toast.success('Product added to cart');
+        }, 0);
         return [...prevCart, {
           productId: productId,
           name: product.product_name || product.name,
@@ -216,7 +228,10 @@ export default function AdminPOS() {
 
   const removeFromCart = useCallback((productId) => {
     setCart(prevCart => prevCart.filter(item => item.productId !== productId));
-    toast.success('Item removed from cart');
+    // Defer toast call to avoid state update during render
+    setTimeout(() => {
+      toast.success('Item removed from cart');
+    }, 0);
   }, []);
 
   const updateQuantity = useCallback((productId, quantity) => {
@@ -238,7 +253,10 @@ export default function AdminPOS() {
         const quantityInStockUnit = unit === 'kg' ? quantity / 1000 : quantity;
         
         if (quantityInStockUnit > availableStock) {
-          toast.error(`Only ${availableStock} ${unit} available in stock`);
+          // Defer toast call to avoid state update during render
+          setTimeout(() => {
+            toast.error(`Only ${availableStock} ${unit} available in stock`);
+          }, 0);
           return prevCart;
         }
       }
@@ -439,7 +457,8 @@ function POSContent({
                 placeholder="Search product..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base text-gray-800 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base text-gray-800 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none placeholder:text-gray-800"
+                placeholder="Search product..."
               />
               <button
                 type="submit"
@@ -830,7 +849,7 @@ function POSContent({
                         placeholder="Enter customer name"
                         value={customerData.name}
                         onChange={(e) => setCustomerData({ ...customerData, name: e.target.value })}
-                        className="w-full px-3 py-2 text-gray-800 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                        className="w-full px-3 py-2 text-gray-800 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none placeholder:text-gray-800"
                       />
                     </div>
                     <div>
@@ -845,7 +864,7 @@ function POSContent({
                         maxLength="10"
                         value={customerData.mobile}
                         onChange={(e) => setCustomerData({ ...customerData, mobile: e.target.value })}
-                        className="w-full px-3 py-2 text-gray-800 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                        className="w-full px-3 py-2 text-gray-800 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none placeholder:text-gray-800"
                       />
                     </div>
                     <div>
@@ -858,7 +877,7 @@ function POSContent({
                         placeholder="Enter customer address"
                         value={customerData.address}
                         onChange={(e) => setCustomerData({ ...customerData, address: e.target.value })}
-                        className="w-full px-3 py-2 text-gray-800 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"
+                        className="w-full px-3 py-2 text-gray-800 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none placeholder:text-gray-800"
                       />
                     </div>
                     <div>

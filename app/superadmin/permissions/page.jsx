@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Layout from '@/components/Layout';
 import { generatePermission, getAllAvailablePermissions } from '@/lib/permissions';
 import { PageLoader } from '@/components/Loader';
 import { toast } from '@/lib/toast';
+import Pagination from '@/components/Pagination';
 
 export default function SuperAdminPermissions() {
   const [users, setUsers] = useState([]);
@@ -12,12 +13,27 @@ export default function SuperAdminPermissions() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [userPermissions, setUserPermissions] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const availablePermissions = getAllAvailablePermissions();
 
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(users.length / itemsPerPage);
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return users.slice(startIndex, endIndex);
+  }, [users, currentPage, itemsPerPage]);
+
+  // Reset to page 1 when users change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [users.length]);
 
   const fetchUsers = async () => {
     try {
@@ -114,70 +130,79 @@ export default function SuperAdminPermissions() {
         {loading ? (
           <PageLoader message="Loading permissions..." />
         ) : (
-          <div className="bg-white shadow overflow-hidden sm:rounded-md">
-            <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Users & Their Permissions</h3>
-              <p className="mt-1 text-sm text-gray-800">Manage CRUD permissions for each user</p>
-            </div>
-            <ul className="divide-y divide-gray-800">
-              {users.map((user) => {
-                const userId = user._id || user.id;
-                const permissions = user.permissions || [];
-                const hasAllPerms = permissions.includes('all');
-                
-                return (
-                  <li key={userId}>
-                    <div className="px-4 py-4 sm:px-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center">
-                            <p className="text-sm font-medium text-indigo-600">{user.name}</p>
-                            <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              user.role === 'superadmin' ? 'bg-purple-100 text-purple-800' :
-                              user.role === 'admin' ? 'bg-blue-100 text-blue-800' :
-                              'bg-white text-gray-800'
-                            }`}>
-                              {user.role}
-                            </span>
-                          </div>
-                          <p className="mt-1 text-sm text-gray-800">{user.email}</p>
-                          <div className="mt-2">
-                            {hasAllPerms ? (
-                              <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
-                                All Permissions
+          <>
+            <div className="bg-white shadow overflow-hidden sm:rounded-md mb-4">
+              <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900">Users & Their Permissions</h3>
+                <p className="mt-1 text-sm text-gray-800">Manage CRUD permissions for each user</p>
+              </div>
+              <ul className="divide-y divide-gray-200">
+                {paginatedUsers.map((user) => {
+                  const userId = user._id || user.id;
+                  const permissions = user.permissions || [];
+                  const hasAllPerms = permissions.includes('all');
+                  
+                  return (
+                    <li key={userId}>
+                      <div className="px-4 py-4 sm:px-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center">
+                              <p className="text-sm font-medium text-indigo-600">{user.name}</p>
+                              <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                user.role === 'superadmin' ? 'bg-purple-100 text-purple-800' :
+                                user.role === 'admin' ? 'bg-blue-100 text-blue-800' :
+                                'bg-white text-gray-800'
+                              }`}>
+                                {user.role}
                               </span>
-                            ) : (
-                              <div className="flex flex-wrap gap-1">
-                                {permissions.slice(0, 5).map((perm, idx) => (
-                                  <span
-                                    key={idx}
-                                    className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-white text-gray-800"
-                                  >
-                                    {perm}
-                                  </span>
-                                ))}
-                                {permissions.length > 5 && (
-                                  <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-white text-gray-800">
-                                    +{permissions.length - 5} more
-                                  </span>
-                                )}
-                              </div>
-                            )}
+                            </div>
+                            <p className="mt-1 text-sm text-gray-800">{user.email}</p>
+                            <div className="mt-2">
+                              {hasAllPerms ? (
+                                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+                                  All Permissions
+                                </span>
+                              ) : (
+                                <div className="flex flex-wrap gap-1">
+                                  {permissions.slice(0, 5).map((perm, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-white text-gray-800"
+                                    >
+                                      {perm}
+                                    </span>
+                                  ))}
+                                  {permissions.length > 5 && (
+                                    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-white text-gray-800">
+                                      +{permissions.length - 5} more
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
+                          <button
+                            onClick={() => handleEditPermissions(user)}
+                            className="ml-4 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm transition"
+                          >
+                            Edit Permissions
+                          </button>
                         </div>
-                        <button
-                          onClick={() => handleEditPermissions(user)}
-                          className="ml-4 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm transition"
-                        >
-                          Edit Permissions
-                        </button>
                       </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              itemsPerPage={itemsPerPage}
+              totalItems={users.length}
+            />
+          </>
         )}
 
         {/* Permissions Modal */}

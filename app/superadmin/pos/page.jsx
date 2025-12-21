@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import Layout, { useSidebar } from '@/components/Layout';
 import { toast } from '@/lib/toast';
 import Receipt from '@/components/Receipt';
@@ -29,6 +29,7 @@ export default function SuperAdminPOS() {
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [showCheckoutPopup, setShowCheckoutPopup] = useState(false);
@@ -41,9 +42,41 @@ export default function SuperAdminPOS() {
     paymentType: ''
   });
 
+  const INITIAL_BATCH_SIZE = 30; // Show first 30 products immediately
+
   useEffect(() => {
     fetchProducts();
   }, []);
+
+  const processProducts = (allProducts) => {
+    // Remove duplicates using Set-based approach - more reliable
+    const seenIds = new Set();
+    const seenEANs = new Set();
+    const uniqueProducts = [];
+    
+    for (const product of allProducts) {
+      if (!product) continue;
+      
+      const productId = product._id || product.id;
+      const productEAN = product.EAN_code;
+      
+      // Create a unique key for this product
+      const idKey = productId ? String(productId) : null;
+      const eanKey = productEAN ? String(productEAN) : null;
+      
+      // Skip if we've seen this ID or EAN before
+      if ((idKey && seenIds.has(idKey)) || (eanKey && seenEANs.has(eanKey))) {
+        continue;
+      }
+      
+      // Mark as seen and add to unique products
+      if (idKey) seenIds.add(idKey);
+      if (eanKey) seenEANs.add(eanKey);
+      uniqueProducts.push(product);
+    }
+    
+    return uniqueProducts;
+  };
 
   const fetchProducts = async () => {
     try {
@@ -51,37 +84,35 @@ export default function SuperAdminPOS() {
       const data = await response.json();
       const allProducts = data.products || [];
       
-      // Remove duplicates using Set-based approach - more reliable
-      const seenIds = new Set();
-      const seenEANs = new Set();
-      const uniqueProducts = [];
+      // Process all products
+      const uniqueProducts = processProducts(allProducts);
       
-      for (const product of allProducts) {
-        if (!product) continue;
+      // Show first batch immediately for fast initial render
+      const initialBatch = uniqueProducts.slice(0, INITIAL_BATCH_SIZE);
+      setProducts(initialBatch);
+      setLoading(false);
+      setInitialLoadComplete(true);
+      
+      // Load remaining products in background using requestIdleCallback or setTimeout
+      if (uniqueProducts.length > INITIAL_BATCH_SIZE) {
+        const remainingProducts = uniqueProducts.slice(INITIAL_BATCH_SIZE);
         
-        const productId = product._id || product.id;
-        const productEAN = product.EAN_code;
-        
-        // Create a unique key for this product
-        const idKey = productId ? String(productId) : null;
-        const eanKey = productEAN ? String(productEAN) : null;
-        
-        // Skip if we've seen this ID or EAN before
-        if ((idKey && seenIds.has(idKey)) || (eanKey && seenEANs.has(eanKey))) {
-          continue;
+        // Use requestIdleCallback if available, otherwise setTimeout
+        if (typeof window !== 'undefined' && window.requestIdleCallback) {
+          window.requestIdleCallback(() => {
+            setProducts(uniqueProducts);
+          }, { timeout: 1000 });
+        } else {
+          // Fallback: load after a short delay to allow initial render
+          setTimeout(() => {
+            setProducts(uniqueProducts);
+          }, 100);
         }
-        
-        // Mark as seen and add to unique products
-        if (idKey) seenIds.add(idKey);
-        if (eanKey) seenEANs.add(eanKey);
-        uniqueProducts.push(product);
       }
-      
-      setProducts(uniqueProducts);
     } catch (error) {
       console.error('Error fetching products:', error);
-    } finally {
       setLoading(false);
+      setInitialLoadComplete(true);
     }
   };
 
@@ -182,10 +213,16 @@ export default function SuperAdminPOS() {
         const newQtyInStockUnit = unit === 'kg' ? (existingItem.quantity + defaultQty) / 1000 : existingItem.quantity + defaultQty;
         
         if (newQtyInStockUnit > availableStock) {
-          toast.error(`Insufficient stock. Only ${availableStock} ${unit} available`);
+          // Defer toast call to avoid state update during render
+          setTimeout(() => {
+            toast.error(`Insufficient stock. Only ${availableStock} ${unit} available`);
+          }, 0);
           return prevCart;
         }
-        toast.success('Quantity updated in cart');
+        // Defer toast call to avoid state update during render
+        setTimeout(() => {
+          toast.success('Quantity updated in cart');
+        }, 0);
         return prevCart.map(item =>
           item.productId === productId
             ? { ...item, quantity: item.quantity + defaultQty }
@@ -195,11 +232,17 @@ export default function SuperAdminPOS() {
         // Check if initial quantity exceeds stock
         const initialQtyInStockUnit = unit === 'kg' ? defaultQty / 1000 : defaultQty;
         if (initialQtyInStockUnit > availableStock) {
-          toast.error(`Insufficient stock. Only ${availableStock} ${unit} available`);
+          // Defer toast call to avoid state update during render
+          setTimeout(() => {
+            toast.error(`Insufficient stock. Only ${availableStock} ${unit} available`);
+          }, 0);
           return prevCart;
         }
         
-        toast.success('Product added to cart');
+        // Defer toast call to avoid state update during render
+        setTimeout(() => {
+          toast.success('Product added to cart');
+        }, 0);
         return [...prevCart, {
           productId: productId,
           name: product.product_name || product.name,
@@ -216,7 +259,10 @@ export default function SuperAdminPOS() {
 
   const removeFromCart = useCallback((productId) => {
     setCart(prevCart => prevCart.filter(item => item.productId !== productId));
-    toast.success('Item removed from cart');
+    // Defer toast call to avoid state update during render
+    setTimeout(() => {
+      toast.success('Item removed from cart');
+    }, 0);
   }, []);
 
   const updateQuantity = useCallback((productId, quantity) => {
@@ -238,7 +284,10 @@ export default function SuperAdminPOS() {
         const quantityInStockUnit = unit === 'kg' ? quantity / 1000 : quantity;
         
         if (quantityInStockUnit > availableStock) {
-          toast.error(`Only ${availableStock} ${unit} available in stock`);
+          // Defer toast call to avoid state update during render
+          setTimeout(() => {
+            toast.error(`Only ${availableStock} ${unit} available in stock`);
+          }, 0);
           return prevCart;
         }
       }
@@ -369,6 +418,7 @@ export default function SuperAdminPOS() {
         products={products}
         cart={cart}
         loading={loading}
+        initialLoadComplete={initialLoadComplete}
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
         selectedCategory={selectedCategory}
@@ -394,10 +444,73 @@ export default function SuperAdminPOS() {
   );
 }
 
+// Memoized Product Card Component for better performance
+const ProductCard = memo(({ product, addToCart, getProductImage }) => {
+  const productId = product._id || product.id;
+  const availableStock = (product.qty || 0) - (product.qty_sold || 0);
+  const productImage = getProductImage(product);
+  
+  return (
+    <div
+      className={`bg-white border border-gray-200 rounded-lg p-1.5 sm:p-2 md:p-2.5 shadow-sm transition touch-manipulation w-full max-w-full overflow-hidden ${
+        availableStock > 0
+          ? 'hover:shadow-md active:scale-[0.98] cursor-pointer'
+          : 'opacity-50 cursor-not-allowed'
+      }`}
+    >
+      {/* Product Image - Clickable */}
+      <div 
+        onClick={() => availableStock > 0 && addToCart(product)}
+        className="mb-1.5 sm:mb-2 cursor-pointer relative w-full bg-gray-50 rounded-md overflow-hidden z-0"
+        style={{ 
+          aspectRatio: '4/3',
+          minHeight: '100px'
+        }}
+      >
+        {productImage ? (
+          <SafeImage
+            src={productImage}
+            alt={product.product_name || product.name}
+            fill
+            className="object-cover object-center relative z-0"
+            sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+            fallback={
+              <div className="absolute inset-0 w-full h-full bg-gray-50 rounded-md flex items-center justify-center z-0">
+                <span className="text-2xl sm:text-3xl md:text-4xl">📦</span>
+              </div>
+            }
+          />
+        ) : (
+          <div className="absolute inset-0 w-full h-full bg-gray-50 rounded-md flex items-center justify-center z-0">
+            <span className="text-2xl sm:text-3xl md:text-4xl">📦</span>
+          </div>
+        )}
+      </div>
+      
+      <h3 className="font-medium text-[9px] sm:text-[10px] md:text-xs text-gray-900 mb-1 sm:mb-1.5 break-words line-clamp-2 min-h-[2em]" title={product.product_name || product.name}>
+        {product.product_name || product.name}
+      </h3>
+      <p className="text-[10px] sm:text-xs md:text-sm font-bold text-purple-600 mb-1.5 sm:mb-2">
+        ₹{product.price || 0} <span className="text-[9px] sm:text-[10px] md:text-xs">{product.unit === 'packets' ? '/pkt' : '/kg'}</span>
+      </p>
+      <button
+        onClick={() => addToCart(product)}
+        disabled={availableStock <= 0}
+        className="w-full bg-red-600 text-white py-1.5 sm:py-2 md:py-2.5 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:bg-gray-200 disabled:cursor-not-allowed text-[9px] sm:text-[10px] md:text-xs font-medium transition touch-manipulation"
+      >
+        Add to Cart
+      </button>
+    </div>
+  );
+});
+
+ProductCard.displayName = 'ProductCard';
+
 function POSContent({ 
   products, 
   cart, 
-  loading, 
+  loading,
+  initialLoadComplete = true,
   searchTerm, 
   setSearchTerm, 
   selectedCategory, 
@@ -423,27 +536,32 @@ function POSContent({
   const [showCartMobile, setShowCartMobile] = useState(false);
 
   return (
-    <div className="h-screen flex flex-col lg:flex-row bg-white overflow-hidden -m-6" style={{ width: `calc(100vw - ${sidebarWidth}px)`, marginLeft: '-1.5rem', transition: 'width 0.3s ease' }}>
+    <div className="h-[calc(100vh-3.75rem)] sm:h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)] lg:h-[calc(100vh-0rem)] flex flex-col lg:flex-row bg-white overflow-hidden overflow-x-hidden max-w-full -m-3 sm:-m-4 md:-m-6 relative z-0" style={{ 
+      width: '100%',
+      maxWidth: '100%',
+      marginLeft: '0',
+      marginRight: '0'
+    }}>
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col overflow-hidden overflow-x-hidden min-w-0 w-full max-w-full lg:w-auto relative z-0">
           {/* Search Bar */}
-          <div className="bg-white shadow-sm p-2 sm:p-4 flex-shrink-0">
+          <div className="bg-white shadow-sm p-2 sm:p-3 md:p-4 flex-shrink-0 border-b w-full max-w-full overflow-x-hidden relative z-10">
             <form 
               onSubmit={(e) => {
                 e.preventDefault();
               }}
-              className="flex items-center gap-2 sm:gap-3"
+              className="flex items-center gap-2 sm:gap-2.5 md:gap-3 w-full max-w-full"
             >
               <input
                 type="text"
                 placeholder="Search product..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base text-gray-800 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                className="flex-1 min-w-0 px-2.5 sm:px-3 md:px-4 py-2 sm:py-2.5 text-xs sm:text-sm md:text-base text-gray-800 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none placeholder:text-gray-500"
               />
               <button
                 type="submit"
-                className="bg-purple-600 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg hover:bg-purple-700 transition font-medium text-sm sm:text-base whitespace-nowrap"
+                className="bg-purple-600 text-white px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 rounded-lg hover:bg-purple-700 active:bg-purple-800 transition font-medium text-xs sm:text-sm md:text-base whitespace-nowrap touch-manipulation"
               >
                 <span className="hidden sm:inline">Search</span>
                 <span className="sm:hidden">🔍</span>
@@ -452,11 +570,12 @@ function POSContent({
               <button
                 type="button"
                 onClick={() => setShowCartMobile(true)}
-                className="lg:hidden relative bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition font-medium"
+                className="lg:hidden relative bg-purple-600 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg hover:bg-purple-700 active:bg-purple-800 transition font-medium touch-manipulation"
+                aria-label="Open cart"
               >
-                🛒
+                <span className="text-base sm:text-lg">🛒</span>
                 {cart.length > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] sm:text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center font-bold">
                     {cart.length}
                   </span>
                 )}
@@ -465,9 +584,9 @@ function POSContent({
           </div>
 
           {/* Category Cards - Horizontal Scrollable */}
-          <div className="bg-white border-b shadow-sm px-2 sm:px-4 py-2 sm:py-3 flex-shrink-0">
-            <div className="overflow-x-auto scrollbar-hide -mx-2 sm:mx-0">
-              <div className="flex gap-1.5 sm:gap-2 pb-2 px-2 sm:px-0" style={{ width: 'max-content' }}>
+          <div className="bg-white border-b shadow-sm px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 flex-shrink-0 w-full max-w-full overflow-x-hidden relative z-10">
+            <div className="overflow-x-auto scrollbar-hide w-full">
+              <div className="flex gap-1.5 sm:gap-2 md:gap-2.5 pb-2" style={{ width: 'max-content' }}>
                 {categories.map((category) => {
                   const categoryName = category.name || category;
                   const isSelected = selectedCategory === categoryName;
@@ -476,13 +595,13 @@ function POSContent({
                     <button
                       key={categoryName}
                       onClick={() => setSelectedCategory(categoryName)}
-                      className={`flex flex-col items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl whitespace-nowrap transition-all min-w-[60px] sm:min-w-[66px] flex-shrink-0 touch-manipulation ${
+                      className={`flex flex-col items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-lg md:rounded-xl whitespace-nowrap transition-all min-w-[55px] sm:min-w-[60px] md:min-w-[70px] flex-shrink-0 touch-manipulation ${
                         isSelected
-                          ? 'bg-purple-600 text-white shadow-lg'
+                          ? 'bg-purple-600 text-white shadow-lg scale-105'
                           : 'bg-amber-50 text-gray-800 hover:bg-amber-100 active:bg-amber-200 shadow-sm border border-amber-200'
                       }`}
                     >
-                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center overflow-hidden relative ${
+                      <div className={`w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center overflow-hidden relative ${
                         isSelected ? 'bg-white/20' : 'bg-white'
                       }`}>
                         {categoryImage ? (
@@ -492,20 +611,20 @@ function POSContent({
                             fill
                             className="object-cover"
                             fallback={
-                              <div className="w-full h-full flex items-center justify-center text-lg sm:text-xl">
+                              <div className="w-full h-full flex items-center justify-center text-base sm:text-lg md:text-xl">
                                 {getCategoryIcon(categoryName)}
                               </div>
                             }
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-lg sm:text-xl">
+                          <div className="w-full h-full flex items-center justify-center text-base sm:text-lg md:text-xl">
                             {getCategoryIcon(categoryName)}
                           </div>
                         )}
                       </div>
-                      <span className="capitalize font-medium text-[10px] sm:text-xs leading-tight">{categoryName}</span>
+                      <span className="capitalize font-medium text-[9px] sm:text-[10px] md:text-xs leading-tight text-center">{categoryName}</span>
                       {category.count !== undefined && category.count > 0 && (
-                        <span className={`text-[9px] sm:text-[10px] ${isSelected ? 'text-white/90' : 'text-gray-800'}`}>
+                        <span className={`text-[8px] sm:text-[9px] md:text-[10px] ${isSelected ? 'text-white/90' : 'text-gray-600'}`}>
                           {category.count}
                         </span>
                       )}
@@ -517,101 +636,55 @@ function POSContent({
           </div>
 
           {/* Products Grid */}
-          <div className="flex-1 overflow-y-auto p-2 sm:p-4">
-            {loading ? (
-              <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-3 md:p-4 w-full max-w-full relative z-10">
+            {!initialLoadComplete && loading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-2 sm:gap-2.5 md:gap-3 lg:gap-4 w-full max-w-full">
                 {[...Array(10)].map((_, index) => (
                   <div key={index} className="bg-white border border-gray-200 rounded-lg p-1.5 sm:p-2 shadow-sm animate-pulse">
                     {/* Image Skeleton */}
-                    <div className="w-full h-12 sm:h-16 bg-white rounded-md mb-1.5 sm:mb-2"></div>
+                    <div className="w-full h-12 sm:h-14 md:h-16 bg-gray-200 rounded-md mb-1.5 sm:mb-2"></div>
                     {/* Title Skeleton */}
-                    <div className="h-3 sm:h-4 bg-white rounded w-3/4 mb-1 sm:mb-2"></div>
-                    <div className="h-3 sm:h-4 bg-white rounded w-1/2 mb-1 sm:mb-2"></div>
+                    <div className="h-3 sm:h-3.5 bg-gray-200 rounded w-3/4 mb-1"></div>
+                    <div className="h-3 sm:h-3.5 bg-gray-200 rounded w-1/2 mb-1.5 sm:mb-2"></div>
                     {/* Price Skeleton */}
-                    <div className="h-4 sm:h-5 bg-white rounded w-2/3 mb-1.5 sm:mb-2"></div>
+                    <div className="h-4 sm:h-5 bg-gray-200 rounded w-2/3 mb-1.5 sm:mb-2"></div>
                     {/* Button Skeleton */}
-                    <div className="h-7 sm:h-8 bg-white rounded w-full"></div>
+                    <div className="h-7 sm:h-8 bg-gray-200 rounded w-full"></div>
                   </div>
                 ))}
               </div>
             ) : filteredProducts.length === 0 ? (
-              <div className="text-center py-8 sm:py-12 text-gray-800 text-sm sm:text-base">No products found</div>
+              <div className="text-center py-8 sm:py-12 text-gray-800 text-xs sm:text-sm md:text-base">No products found</div>
             ) : (
-              <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
-                {filteredProducts.map((product) => {
-                  const productId = product._id || product.id;
-                  const availableStock = (product.qty || 0) - (product.qty_sold || 0);
-                  const productImage = getProductImage(product);
-                  
-                  return (
-                    <div
-                      key={productId}
-                      className={`bg-white border border-gray-200 rounded-lg p-1.5 sm:p-2 shadow-sm transition touch-manipulation ${
-                        availableStock > 0
-                          ? 'hover:shadow-md active:scale-95 cursor-pointer'
-                          : 'opacity-50 cursor-not-allowed'
-                      }`}
-                    >
-                      {/* Product Image - Clickable */}
-                      <div 
-                        onClick={() => availableStock > 0 && addToCart(product)}
-                        className="mb-1.5 sm:mb-2 cursor-pointer relative w-full h-12 sm:h-16"
-                      >
-                        {productImage ? (
-                          <SafeImage
-                            src={productImage}
-                            alt={product.product_name || product.name}
-                            fill
-                            className="object-cover rounded-md"
-                            fallback={
-                              <div className="w-full h-12 sm:h-16 bg-white rounded-md flex items-center justify-center">
-                                <span className="text-xl sm:text-2xl">📦</span>
-                              </div>
-                            }
-                          />
-                        ) : (
-                          <div className="w-full h-12 sm:h-16 bg-white rounded-md flex items-center justify-center">
-                            <span className="text-xl sm:text-2xl">📦</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <h3 className="font-medium text-[10px] sm:text-xs text-gray-900 mb-1 break-words" title={product.product_name || product.name}>
-                        {product.product_name || product.name}
-                      </h3>
-                      <p className="text-xs sm:text-sm font-bold text-purple-600 mb-1.5 sm:mb-2">
-                        ₹{product.price || 0} <span className="text-[10px] sm:text-xs">{product.unit === 'packets' ? '/pkt' : '/kg'}</span>
-                      </p>
-                      <button
-                        onClick={() => addToCart(product)}
-                        disabled={availableStock <= 0}
-                        className="w-full bg-red-600 text-white py-1.5 sm:py-2 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:bg-gray-200 disabled:cursor-not-allowed text-[10px] sm:text-xs font-medium transition touch-manipulation"
-                      >
-                        Add to Cart
-                      </button>
-                    </div>
-                  );
-                })}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-2 sm:gap-2.5 md:gap-3 lg:gap-4 w-full max-w-full">
+                {filteredProducts.map((product) => (
+                  <ProductCard
+                    key={product._id || product.id}
+                    product={product}
+                    addToCart={addToCart}
+                    getProductImage={getProductImage}
+                  />
+                ))}
               </div>
             )}
           </div>
         </div>
 
         {/* Shopping Cart Sidebar - Desktop */}
-        <div className="hidden lg:flex bg-white shadow-lg border-l flex-col flex-shrink-0" style={{ width: 'clamp(280px, 20%, 380px)', minWidth: '280px' }}>
-          <div className="p-3 border-b flex-shrink-0">
-            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+        <div className="hidden lg:flex bg-white shadow-lg border-l flex-col flex-shrink-0" style={{ width: 'clamp(300px, 25%, 400px)', minWidth: '300px', maxWidth: '400px' }}>
+          <div className="p-3 md:p-4 border-b flex-shrink-0">
+            <h2 className="text-base md:text-lg font-bold text-gray-900 flex items-center gap-2">
               <span>🛒</span> Cart
             </h2>
           </div>
 
-          <div className="flex-1 overflow-y-auto min-h-0 p-2">
+          <div className="flex-1 overflow-y-auto min-h-0 p-2 md:p-3">
             {cart.length === 0 ? (
-              <div className="p-4 text-center text-gray-800">
-                <p>Cart is empty</p>
+              <div className="p-4 md:p-6 text-center text-gray-800">
+                <p className="text-sm md:text-base">Cart is empty</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2 md:space-y-2.5">
                 {cart.map((item) => {
                   const product = products.find(p => (p._id || p.id) === item.productId);
                   const availableStock = product ? (product.qty || 0) - (product.qty_sold || 0) : 0;
@@ -619,25 +692,27 @@ function POSContent({
                   const itemTotal = item.price * qtyInUnit;
                   
                   return (
-                    <div key={item.productId} className="bg-white rounded-lg p-2 border border-gray-200">
-                      <div className="flex justify-between items-start mb-1.5">
-                        <div className="flex-1">
-                          <h4 className="font-medium text-sm text-gray-900 mb-0.5">{item.name}</h4>
-                          <p className="text-xs text-gray-800">Available: {availableStock} {item.unit}</p>
+                    <div key={item.productId} className="bg-white rounded-lg p-2 md:p-2.5 border border-gray-200">
+                      <div className="flex justify-between items-start mb-1.5 md:mb-2">
+                        <div className="flex-1 min-w-0 pr-2">
+                          <h4 className="font-medium text-xs md:text-sm text-gray-900 mb-0.5 truncate">{item.name}</h4>
+                          <p className="text-[10px] md:text-xs text-gray-600">Available: {availableStock} {item.unit}</p>
                         </div>
                         <button
                           onClick={() => removeFromCart(item.productId)}
-                          className="text-red-600 hover:text-red-800 text-sm font-medium"
+                          className="text-red-600 hover:text-red-800 active:text-red-900 text-sm md:text-base font-medium touch-manipulation flex-shrink-0"
+                          aria-label="Remove item"
                         >
                           ✕
                         </button>
                       </div>
                       
                       <div className="flex items-center justify-between mt-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 md:gap-2">
                           <button
                             onClick={() => updateQuantity(item.productId, item.quantity - (item.unit === 'kg' ? 100 : 1))}
-                            className="w-7 h-7 rounded bg-gray-200 hover:bg-gray-300 text-sm font-bold"
+                            className="w-6 h-6 md:w-7 md:h-7 rounded bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-sm font-bold touch-manipulation"
+                            aria-label="Decrease quantity"
                           >
                             -
                           </button>
@@ -651,22 +726,23 @@ function POSContent({
                                   updateQuantity(item.productId, value);
                                 }
                               }}
-                              className="w-16 text-sm text-center font-medium text-gray-800 border border-gray-200 rounded px-1 py-1 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                              className="w-14 md:w-16 text-xs md:text-sm text-center font-medium text-gray-800 border border-gray-200 rounded px-1 py-1 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                               min="0"
                             />
-                            <span className="text-xs ml-1 text-gray-800">
+                            <span className="text-[10px] md:text-xs ml-1 text-gray-600">
                               {item.unit === 'kg' ? 'g' : 'pcs'}
                             </span>
                           </div>
                           <button
                             onClick={() => updateQuantity(item.productId, item.quantity + (item.unit === 'kg' ? 100 : 1))}
-                            disabled={item.quantity >= availableStock}
-                            className="w-7 h-7 rounded bg-gray-200 hover:bg-gray-300 disabled:bg-gray-200 disabled:cursor-not-allowed text-sm font-bold"
+                            disabled={qtyInUnit >= availableStock}
+                            className="w-6 h-6 md:w-7 md:h-7 rounded bg-gray-200 hover:bg-gray-300 active:bg-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed text-sm font-bold touch-manipulation"
+                            aria-label="Increase quantity"
                           >
                             +
                           </button>
                         </div>
-                        <span className="text-sm font-bold text-gray-900">₹{itemTotal.toFixed(2)}</span>
+                        <span className="text-xs md:text-sm font-bold text-gray-900 ml-2">₹{itemTotal.toFixed(2)}</span>
                       </div>
                     </div>
                   );
@@ -676,17 +752,17 @@ function POSContent({
           </div>
 
           {/* Cart Footer */}
-          <div className="border-t p-3 bg-white flex-shrink-0">
-            <div className="mb-2">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-base sm:text-lg font-bold text-gray-900">Total:</span>
-                <span className="text-xl sm:text-2xl font-bold text-purple-600">₹{getTotal.toFixed(2)}</span>
+          <div className="border-t p-3 md:p-4 bg-white flex-shrink-0">
+            <div className="mb-2 md:mb-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm md:text-base lg:text-lg font-bold text-gray-900">Total:</span>
+                <span className="text-lg md:text-xl lg:text-2xl font-bold text-purple-600">₹{getTotal.toFixed(2)}</span>
               </div>
             </div>
             <button
               onClick={() => setShowCheckoutPopup(true)}
               disabled={cart.length === 0}
-              className="w-full bg-red-600 text-white py-2.5 sm:py-3 px-4 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition text-sm sm:text-base touch-manipulation"
+              className="w-full bg-red-600 text-white py-2.5 md:py-3 px-4 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition text-sm md:text-base touch-manipulation"
             >
               Proceed to Checkout
             </button>
@@ -700,26 +776,27 @@ function POSContent({
               className="lg:hidden fixed inset-0 bg-black/50 z-40"
               onClick={() => setShowCartMobile(false)}
             ></div>
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white shadow-2xl rounded-t-2xl flex flex-col z-50" style={{ maxHeight: '80vh' }}>
-              <div className="p-4 border-b flex-shrink-0 flex items-center justify-between">
-                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white shadow-2xl rounded-t-2xl flex flex-col z-50" style={{ maxHeight: '85vh', height: 'auto' }}>
+              <div className="p-3 sm:p-4 border-b flex-shrink-0 flex items-center justify-between">
+                <h2 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
                   <span>🛒</span> Cart ({cart.length})
                 </h2>
                 <button
                   onClick={() => setShowCartMobile(false)}
-                  className="text-gray-800 hover:text-gray-800 text-2xl"
+                  className="text-gray-800 hover:text-gray-900 active:text-gray-700 text-2xl sm:text-3xl touch-manipulation"
+                  aria-label="Close cart"
                 >
                   ×
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto min-h-0 p-3">
+              <div className="flex-1 overflow-y-auto min-h-0 p-3 sm:p-4">
                 {cart.length === 0 ? (
-                  <div className="p-4 text-center text-gray-800 text-sm">
+                  <div className="p-6 sm:p-8 text-center text-gray-800 text-sm sm:text-base">
                     <p>Cart is empty</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-2.5 sm:space-y-3">
                     {cart.map((item) => {
                       const product = products.find(p => (p._id || p.id) === item.productId);
                       const availableStock = product ? (product.qty || 0) - (product.qty_sold || 0) : 0;
@@ -727,25 +804,27 @@ function POSContent({
                       const itemTotal = item.price * qtyInUnit;
                       
                       return (
-                        <div key={item.productId} className="bg-white rounded-lg p-2.5 border border-gray-200">
-                          <div className="flex justify-between items-start mb-2">
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-medium text-sm text-gray-900 mb-0.5 truncate">{item.name}</h4>
-                              <p className="text-xs text-gray-800">Available: {availableStock} {item.unit}</p>
+                        <div key={item.productId} className="bg-white rounded-lg p-3 sm:p-3.5 border border-gray-200">
+                          <div className="flex justify-between items-start mb-2 sm:mb-2.5">
+                            <div className="flex-1 min-w-0 pr-2">
+                              <h4 className="font-medium text-sm sm:text-base text-gray-900 mb-1 truncate">{item.name}</h4>
+                              <p className="text-xs text-gray-600">Available: {availableStock} {item.unit}</p>
                             </div>
                             <button
                               onClick={() => removeFromCart(item.productId)}
-                              className="text-red-600 hover:text-red-800 text-lg font-medium ml-2 touch-manipulation"
+                              className="text-red-600 hover:text-red-800 active:text-red-900 text-lg sm:text-xl font-medium ml-2 touch-manipulation flex-shrink-0"
+                              aria-label="Remove item"
                             >
                               ✕
                             </button>
                           </div>
                           
-                          <div className="flex items-center justify-between mt-2">
-                            <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-between mt-2.5">
+                            <div className="flex items-center gap-2 sm:gap-2.5">
                               <button
                                 onClick={() => updateQuantity(item.productId, item.quantity - (item.unit === 'kg' ? 100 : 1))}
-                                className="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 active:bg-white text-sm font-bold touch-manipulation"
+                                className="w-8 h-8 sm:w-9 sm:h-9 rounded bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-base sm:text-lg font-bold touch-manipulation"
+                                aria-label="Decrease quantity"
                               >
                                 -
                               </button>
@@ -759,22 +838,23 @@ function POSContent({
                                       updateQuantity(item.productId, value);
                                     }
                                   }}
-                                  className="w-16 text-sm text-center font-medium text-gray-800 border border-gray-200 rounded px-1 py-1 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                                  className="w-16 sm:w-20 text-sm sm:text-base text-center font-medium text-gray-800 border border-gray-200 rounded px-1.5 py-1.5 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                                   min="0"
                                 />
-                                <span className="text-xs ml-1 text-gray-800">
+                                <span className="text-xs sm:text-sm ml-1.5 text-gray-600">
                                   {item.unit === 'kg' ? 'g' : 'pcs'}
                                 </span>
                               </div>
                               <button
                                 onClick={() => updateQuantity(item.productId, item.quantity + (item.unit === 'kg' ? 100 : 1))}
-                                disabled={item.quantity >= availableStock}
-                                className="w-8 h-8 rounded bg-gray-200 disabled:bg-gray-100 disabled:cursor-not-allowed text-sm font-bold touch-manipulation"
+                                disabled={qtyInUnit >= availableStock}
+                                className="w-8 h-8 sm:w-9 sm:h-9 rounded bg-gray-200 hover:bg-gray-300 active:bg-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed text-base sm:text-lg font-bold touch-manipulation"
+                                aria-label="Increase quantity"
                               >
                                 +
                               </button>
                             </div>
-                            <span className="text-sm font-bold text-gray-900">₹{itemTotal.toFixed(2)}</span>
+                            <span className="text-sm sm:text-base font-bold text-gray-900 ml-3">₹{itemTotal.toFixed(2)}</span>
                           </div>
                         </div>
                       );
@@ -783,11 +863,11 @@ function POSContent({
                 )}
               </div>
 
-              <div className="border-t p-4 bg-white flex-shrink-0">
-                <div className="mb-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-lg font-bold text-gray-900">Total:</span>
-                    <span className="text-2xl font-bold text-purple-600">₹{getTotal.toFixed(2)}</span>
+              <div className="border-t p-3 sm:p-4 bg-white flex-shrink-0 safe-area-bottom">
+                <div className="mb-3 sm:mb-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-base sm:text-lg font-bold text-gray-900">Total:</span>
+                    <span className="text-xl sm:text-2xl font-bold text-purple-600">₹{getTotal.toFixed(2)}</span>
                   </div>
                 </div>
                 <button
@@ -796,7 +876,7 @@ function POSContent({
                     setShowCheckoutPopup(true);
                   }}
                   disabled={cart.length === 0}
-                  className="w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition text-base touch-manipulation"
+                  className="w-full bg-red-600 text-white py-3 sm:py-3.5 px-4 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition text-sm sm:text-base touch-manipulation"
                 >
                   Proceed to Checkout
                 </button>
@@ -812,16 +892,16 @@ function POSContent({
               className="fixed inset-0 bg-black/50 z-40"
               onClick={() => setShowCheckoutPopup(false)}
             ></div>
-            <div className="fixed inset-0 flex items-center justify-center z-50 p-2 sm:p-4">
+            <div className="fixed inset-0 flex items-center justify-center z-50 p-3 sm:p-4 md:p-6">
               <div 
-                className="bg-white rounded-lg sm:rounded-xl shadow-xl max-w-md w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto"
+                className="bg-white rounded-lg sm:rounded-xl shadow-xl max-w-md w-full p-4 sm:p-5 md:p-6 max-h-[90vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
               >
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Customer Details</h3>
+                <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-5">Customer Details</h3>
                 <form onSubmit={(e) => { e.preventDefault(); handleCheckout(); }}>
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-800 mb-1">
+                      <label className="block text-xs sm:text-sm font-medium text-gray-800 mb-1.5">
                         Name <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -830,11 +910,11 @@ function POSContent({
                         placeholder="Enter customer name"
                         value={customerData.name}
                         onChange={(e) => setCustomerData({ ...customerData, name: e.target.value })}
-                        className="w-full px-3 py-2 text-gray-800 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                        className="w-full px-3 py-2 sm:py-2.5 text-sm sm:text-base text-gray-800 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none placeholder:text-gray-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-800 mb-1">
+                      <label className="block text-xs sm:text-sm font-medium text-gray-800 mb-1.5">
                         Mobile No <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -845,32 +925,32 @@ function POSContent({
                         maxLength="10"
                         value={customerData.mobile}
                         onChange={(e) => setCustomerData({ ...customerData, mobile: e.target.value })}
-                        className="w-full px-3 py-2 text-gray-800 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                        className="w-full px-3 py-2 sm:py-2.5 text-sm sm:text-base text-gray-800 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none placeholder:text-gray-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-800 mb-1">
+                      <label className="block text-xs sm:text-sm font-medium text-gray-800 mb-1.5">
                         Address <span className="text-red-500">*</span>
                       </label>
                       <textarea
                         required
-                        rows={2}
+                        rows={3}
                         placeholder="Enter customer address"
                         value={customerData.address}
                         onChange={(e) => setCustomerData({ ...customerData, address: e.target.value })}
-                        className="w-full px-3 py-2 text-gray-800 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"
+                        className="w-full px-3 py-2 sm:py-2.5 text-sm sm:text-base text-gray-800 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none placeholder:text-gray-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-800 mb-1">
+                      <label className="block text-xs sm:text-sm font-medium text-gray-800 mb-1.5">
                         Payment Type <span className="text-red-500">*</span>
                       </label>
                       <select
                         required
                         value={customerData.paymentType}
                         onChange={(e) => setCustomerData({ ...customerData, paymentType: e.target.value })}
-                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none ${
-                          customerData.paymentType === '' ? 'text-gray-800 border-gray-200' : 'text-gray-900 border-gray-200'
+                        className={`w-full px-3 py-2 sm:py-2.5 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none ${
+                          customerData.paymentType === '' ? 'text-gray-500 border-gray-200' : 'text-gray-900 border-gray-200'
                         }`}
                       >
                         <option value="" disabled>Select Payment Type</option>
@@ -879,21 +959,21 @@ function POSContent({
                         <option value="Card">💳 Card</option>
                       </select>
                       {customerData.paymentType === '' && (
-                        <p className="mt-1 text-xs text-gray-800">Please select a payment method</p>
+                        <p className="mt-1 text-xs text-gray-600">Please select a payment method</p>
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-3 mt-6">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-5 sm:mt-6">
                     <button
                       type="submit"
-                      className="flex-1 bg-red-600 text-white py-2.5 px-4 rounded-lg hover:bg-red-700 font-medium transition"
+                      className="flex-1 bg-red-600 text-white py-2.5 sm:py-3 px-4 rounded-lg hover:bg-red-700 active:bg-red-800 font-medium transition text-sm sm:text-base touch-manipulation"
                     >
                       Save & Print
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowCheckoutPopup(false)}
-                      className="flex-1 bg-white text-gray-800 py-2.5 px-4 rounded-lg hover:bg-white font-medium transition"
+                      className="flex-1 bg-white text-gray-800 py-2.5 sm:py-3 px-4 rounded-lg hover:bg-gray-50 active:bg-gray-100 font-medium transition border border-gray-200 text-sm sm:text-base touch-manipulation"
                     >
                       Cancel
                     </button>

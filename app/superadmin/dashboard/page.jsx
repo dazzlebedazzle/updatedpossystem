@@ -226,88 +226,15 @@ export default function SuperAdminDashboard() {
               Sales ({period.charAt(0).toUpperCase() + period.slice(1)})
             </h3>
             {chartLoading ? (
-              <div className="h-64 flex items-center justify-center">
+              <div className="h-48 sm:h-64 flex items-center justify-center">
                 <Loader size="lg" />
               </div>
             ) : salesData.length === 0 ? (
-              <div className="h-64 flex items-center justify-center text-gray-800">No sales data available</div>
+              <div className="h-48 sm:h-64 flex items-center justify-center text-gray-800 text-sm sm:text-base">No sales data available</div>
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={salesData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={formatDateLabel}
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
-                  />
-                  <YAxis />
-                  <Tooltip
-                    labelFormatter={(label) => `Date: ${formatDateLabel(label)}`}
-                    formatter={(value) => [value, 'Sales']}
-                  />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="sales"
-                    stroke="#4F46E5"
-                    strokeWidth={2}
-                    name="Number of Sales"
-                    dot={{ r: 4 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-
-          {/* Revenue Chart */}
-          <div className="bg-white shadow rounded-lg p-4 sm:p-6">
-            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">
-              Revenue ({period.charAt(0).toUpperCase() + period.slice(1)})
-            </h3>
-            {chartLoading ? (
-              <div className="h-64 flex items-center justify-center">
-                <Loader size="lg" />
-              </div>
-            ) : revenueData.length === 0 ? (
-              <div className="h-64 flex items-center justify-center text-gray-800">No revenue data available</div>
-            ) : (
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={revenueData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={formatDateLabel}
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
-                  />
-                  <YAxis />
-                  <Tooltip
-                    labelFormatter={(label) => `Date: ${formatDateLabel(label)}`}
-                    formatter={(value) => [`₹${value.toFixed(2)}`, 'Revenue']}
-                  />
-                  <Legend />
-                  <Bar dataKey="revenue" fill="#10B981" name="Revenue (₹)" />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-
-          {/* Daily Customers Chart */}
-          {period === 'daily' && (
-            <div className="bg-white shadow rounded-lg p-4 sm:p-6 lg:col-span-2">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Daily Total Customers</h3>
-              {chartLoading ? (
-                <div className="h-64 flex items-center justify-center">
-                  <Loader size="lg" />
-                </div>
-              ) : customersData.length === 0 ? (
-                <div className="h-64 flex items-center justify-center text-gray-800">No customer data available</div>
-              ) : (
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={customersData}>
+              <div className="w-full h-[250px] sm:h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={salesData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="date"
@@ -319,12 +246,91 @@ export default function SuperAdminDashboard() {
                     <YAxis />
                     <Tooltip
                       labelFormatter={(label) => `Date: ${formatDateLabel(label)}`}
-                      formatter={(value) => [value, 'Customers']}
+                      formatter={(value) => [value, 'Sales']}
                     />
                     <Legend />
-                    <Bar dataKey="customers" fill="#F59E0B" name="Number of Customers" />
+                    <Line
+                      type="monotone"
+                      dataKey="sales"
+                      stroke="#4F46E5"
+                      strokeWidth={2}
+                      name="Number of Sales"
+                      dot={{ r: 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+
+          {/* Revenue Chart */}
+          <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">
+              Revenue ({period.charAt(0).toUpperCase() + period.slice(1)})
+            </h3>
+            {chartLoading ? (
+              <div className="h-48 sm:h-64 flex items-center justify-center">
+                <Loader size="lg" />
+              </div>
+            ) : revenueData.length === 0 ? (
+              <div className="h-48 sm:h-64 flex items-center justify-center text-gray-800 text-sm sm:text-base">No revenue data available</div>
+            ) : (
+              <div className="w-full h-[250px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={revenueData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={formatDateLabel}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis />
+                    <Tooltip
+                      labelFormatter={(label) => `Date: ${formatDateLabel(label)}`}
+                      formatter={(value) => [`₹${value.toFixed(2)}`, 'Revenue']}
+                    />
+                    <Legend />
+                    <Bar dataKey="revenue" fill="#10B981" name="Revenue (₹)" />
                   </BarChart>
                 </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+
+          {/* Daily Customers Chart */}
+          {period === 'daily' && (
+            <div className="bg-white shadow rounded-lg p-4 sm:p-6 lg:col-span-2">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Daily Total Customers</h3>
+              {chartLoading ? (
+                <div className="h-48 sm:h-64 flex items-center justify-center">
+                  <Loader size="lg" />
+                </div>
+              ) : customersData.length === 0 ? (
+                <div className="h-48 sm:h-64 flex items-center justify-center text-gray-800 text-sm sm:text-base">No customer data available</div>
+              ) : (
+                <div className="w-full h-[250px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={customersData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="date"
+                        tickFormatter={formatDateLabel}
+                        angle={-45}
+                        textAnchor="end"
+                        height={80}
+                      />
+                      <YAxis />
+                      <Tooltip
+                        labelFormatter={(label) => `Date: ${formatDateLabel(label)}`}
+                        formatter={(value) => [value, 'Customers']}
+                      />
+                      <Legend />
+                      <Bar dataKey="customers" fill="#F59E0B" name="Number of Customers" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               )}
             </div>
           )}

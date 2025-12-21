@@ -479,7 +479,7 @@ export default function UserProducts() {
                       value={formData.images}
                       onChange={(e) => setFormData({ ...formData, images: e.target.value })}
                       placeholder="Or enter image filename"
-                      className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm mt-2"
+                      className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm mt-2 placeholder:text-gray-800"
                     />
                   )}
                 </div>
@@ -490,7 +490,7 @@ export default function UserProducts() {
                     value={formData.expiry_date}
                     onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
                     placeholder="MM/DD/YYYY"
-                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm placeholder:text-gray-800"
                   />
                 </div>
                 <div>
@@ -500,7 +500,7 @@ export default function UserProducts() {
                     value={formData.date_arrival}
                     onChange={(e) => setFormData({ ...formData, date_arrival: e.target.value })}
                     placeholder="MM/DD/YYYY"
-                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm placeholder:text-gray-800"
                   />
                 </div>
                 <div>

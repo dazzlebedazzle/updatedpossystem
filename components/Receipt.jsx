@@ -111,6 +111,7 @@ export default function Receipt({ saleData, onClose }) {
               font-family: 'Courier New', monospace;
               padding: 20px;
               background: white;
+              color: #1f2937;
             }
             .receipt {
               max-width: 300px;
@@ -139,10 +140,12 @@ export default function Receipt({ saleData, onClose }) {
               font-size: 18px;
               font-weight: bold;
               margin-bottom: 5px;
+              color: #1f2937;
             }
             .company-details {
               font-size: 10px;
               line-height: 1.4;
+              color: #1f2937;
             }
             .section {
               margin: 10px 0;
@@ -158,6 +161,7 @@ export default function Receipt({ saleData, onClose }) {
               justify-content: space-between;
               font-size: 10px;
               margin: 3px 0;
+              color: #1f2937;
             }
             .items-header {
               display: flex;
@@ -183,7 +187,7 @@ export default function Receipt({ saleData, onClose }) {
             }
             .item-qty {
               font-size: 9px;
-              color: #666;
+              color: #1f2937;
             }
             .item-price {
               text-align: right;
@@ -213,6 +217,7 @@ export default function Receipt({ saleData, onClose }) {
               padding-top: 10px;
               border-top: 2px dashed #000;
               font-size: 10px;
+              color: #1f2937;
             }
             .thank-you {
               font-weight: bold;
@@ -341,6 +346,7 @@ export default function Receipt({ saleData, onClose }) {
         yPosition += logoHeight + 5;
       } else {
         // Fallback to text if image not loaded
+        doc.setTextColor(31, 41, 55); // gray-800
         doc.setFontSize(20);
         doc.text('TAJALLI', pageWidth / 2, yPosition, { align: 'center' });
         yPosition += 8;
@@ -348,11 +354,13 @@ export default function Receipt({ saleData, onClose }) {
     } catch (error) {
       console.error('Error adding logo to PDF:', error);
       // Fallback to text if image fails
+      doc.setTextColor(31, 41, 55); // gray-800
       doc.setFontSize(20);
       doc.text('TAJALLI', pageWidth / 2, yPosition, { align: 'center' });
       yPosition += 8;
     }
 
+    doc.setTextColor(31, 41, 55); // gray-800
     doc.setFontSize(8);
     doc.text('GSTIN: 07AAXCS0618K1ZT', pageWidth / 2, yPosition, { align: 'center' });
     yPosition += 4;
@@ -369,6 +377,7 @@ export default function Receipt({ saleData, onClose }) {
     yPosition += 5;
 
     // Receipt Info
+    doc.setTextColor(31, 41, 55); // gray-800
     doc.setFontSize(9);
     doc.text(`Receipt: ${saleData.receiptNumber}`, margin, yPosition);
     yPosition += 5;
@@ -376,6 +385,7 @@ export default function Receipt({ saleData, onClose }) {
     yPosition += 6;
 
     // Customer Details
+    doc.setTextColor(31, 41, 55); // gray-800
     doc.setFontSize(10);
     doc.setFont(undefined, 'bold');
     doc.text('Customer Details:', margin, yPosition);
@@ -395,6 +405,7 @@ export default function Receipt({ saleData, onClose }) {
     yPosition += 5;
 
     // Items Header
+    doc.setTextColor(31, 41, 55); // gray-800
     doc.setFontSize(9);
     doc.setFont(undefined, 'bold');
     doc.text('Item', margin, yPosition);
@@ -412,6 +423,7 @@ export default function Receipt({ saleData, onClose }) {
         yPosition = 10;
       }
 
+      doc.setTextColor(31, 41, 55); // gray-800
       doc.setFontSize(9);
       doc.setFont(undefined, 'bold');
       const itemNameLines = doc.splitTextToSize(item.name, maxWidth - 50);
@@ -435,6 +447,7 @@ export default function Receipt({ saleData, onClose }) {
     yPosition += 5;
 
     // Totals
+    doc.setTextColor(31, 41, 55); // gray-800
     doc.setFontSize(9);
     doc.text(`Subtotal: ${formatCurrency(saleData.subtotal)}`, pageWidth - margin, yPosition, { align: 'right' });
     yPosition += 6;
@@ -452,6 +465,7 @@ export default function Receipt({ saleData, onClose }) {
     yPosition += 8;
 
     // Footer
+    doc.setTextColor(31, 41, 55); // gray-800
     doc.line(margin, yPosition, pageWidth - margin, yPosition);
     yPosition += 5;
     doc.setFontSize(10);
@@ -483,14 +497,14 @@ export default function Receipt({ saleData, onClose }) {
           {/* Preview */}
           <div className="p-6 max-h-[80vh] overflow-y-auto">
             <div ref={receiptRef}>
-              <div className="receipt" style={{ maxWidth: '300px', margin: '0 auto', fontFamily: '"Courier New", monospace' }}>
+              <div className="receipt text-gray-800" style={{ maxWidth: '300px', margin: '0 auto', fontFamily: '"Courier New", monospace', color: '#1f2937' }}>
                 {/* Header */}
                 <div className="header" style={{ textAlign: 'center', borderBottom: '2px dashed #000', paddingBottom: '10px', marginBottom: '10px' }}>
                   <div className="logo" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', width: '120px', height: '60px', margin: '0 auto 5px' }}>
                     <Image src="/assets/category_images/logoo.png" alt="Tajalli Logo" width={120} height={60} style={{ objectFit: 'contain' }} />
                   </div>
-                  <div className="company-name" style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '5px' }}>TAJALLI</div>
-                  <div className="company-details" style={{ fontSize: '10px', lineHeight: '1.4' }}>
+                  <div className="company-name text-gray-800" style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '5px', color: '#1f2937' }}>TAJALLI</div>
+                  <div className="company-details text-gray-800" style={{ fontSize: '10px', lineHeight: '1.4', color: '#1f2937' }}>
                     <div>GSTIN: 07AAXCS0618K1ZT</div>
                     <div>FASSAI: 13323999001107</div>
                     <div style={{ marginTop: '5px' }}>16-B Jangpura Road</div>
@@ -501,11 +515,11 @@ export default function Receipt({ saleData, onClose }) {
 
                 {/* Receipt Info */}
                 <div className="section">
-                  <div className="info-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', margin: '3px 0' }}>
+                  <div className="info-row text-gray-800" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', margin: '3px 0', color: '#1f2937' }}>
                     <span>Receipt:</span>
                     <span style={{ fontWeight: 'bold' }}>{saleData.receiptNumber}</span>
                   </div>
-                  <div className="info-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', margin: '3px 0' }}>
+                  <div className="info-row text-gray-800" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', margin: '3px 0', color: '#1f2937' }}>
                     <span>Date:</span>
                     <span>{formatDate(saleData.date)}</span>
                   </div>
@@ -513,16 +527,16 @@ export default function Receipt({ saleData, onClose }) {
 
                 {/* Customer Details */}
                 <div className="section" style={{ borderTop: '1px dashed #ccc', paddingTop: '8px', marginTop: '8px' }}>
-                  <div className="section-title" style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '5px' }}>Customer Details:</div>
-                  <div className="info-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', margin: '3px 0' }}>
+                  <div className="section-title text-gray-800" style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '5px', color: '#1f2937' }}>Customer Details:</div>
+                  <div className="info-row text-gray-800" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', margin: '3px 0', color: '#1f2937' }}>
                     <span>Name:</span>
                     <span>{saleData.customerName}</span>
                   </div>
-                  <div className="info-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', margin: '3px 0' }}>
+                  <div className="info-row text-gray-800" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', margin: '3px 0', color: '#1f2937' }}>
                     <span>Mobile:</span>
                     <span>{saleData.customerMobile}</span>
                   </div>
-                  <div className="info-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', margin: '3px 0' }}>
+                  <div className="info-row text-gray-800" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', margin: '3px 0', color: '#1f2937' }}>
                     <span>Address:</span>
                     <span style={{ textAlign: 'right', maxWidth: '60%' }}>{saleData.customerAddress}</span>
                   </div>
@@ -530,19 +544,19 @@ export default function Receipt({ saleData, onClose }) {
 
                 {/* Items */}
                 <div className="section" style={{ marginTop: '10px' }}>
-                  <div className="items-header" style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '10px', borderBottom: '1px solid #000', padding: '5px 0' }}>
+                  <div className="items-header text-gray-800" style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '10px', borderBottom: '1px solid #000', padding: '5px 0', color: '#1f2937' }}>
                     <span>Item</span>
                     <span>Price</span>
                   </div>
                   {saleData.items.map((item, index) => (
-                    <div key={index} className="item-row" style={{ padding: '5px 0', borderBottom: '1px dashed #ccc' }}>
+                    <div key={index} className="item-row text-gray-800" style={{ padding: '5px 0', borderBottom: '1px dashed #ccc', color: '#1f2937' }}>
                       <div className="item-details" style={{ flex: 1 }}>
-                        <div className="item-name" style={{ fontWeight: 'bold', fontSize: '10px' }}>{item.name}</div>
-                        <div className="item-qty" style={{ fontSize: '9px', color: '#666' }}>
+                        <div className="item-name" style={{ fontWeight: 'bold', fontSize: '10px', color: '#1f2937' }}>{item.name}</div>
+                        <div className="item-qty" style={{ fontSize: '9px', color: '#1f2937' }}>
                           {item.unit === 'kg' ? `${item.quantity / 1000} kg` : `${item.quantity} pcs`} × {formatCurrency(item.price)}
                         </div>
                       </div>
-                      <div className="item-price" style={{ textAlign: 'right', minWidth: '60px', fontSize: '10px' }}>
+                      <div className="item-price" style={{ textAlign: 'right', minWidth: '60px', fontSize: '10px', color: '#1f2937' }}>
                         {formatCurrency(item.total)}
                       </div>
                     </div>
@@ -551,25 +565,25 @@ export default function Receipt({ saleData, onClose }) {
 
                 {/* Totals */}
                 <div className="totals" style={{ marginTop: '10px', borderTop: '2px solid #000', paddingTop: '10px' }}>
-                  <div className="total-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', margin: '5px 0' }}>
+                  <div className="total-row text-gray-800" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', margin: '5px 0', color: '#1f2937' }}>
                     <span>Subtotal:</span>
                     <span>{formatCurrency(saleData.subtotal)}</span>
                   </div>
-                  <div className="grand-total" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 'bold', borderTop: '2px solid #000', paddingTop: '8px', marginTop: '8px' }}>
+                  <div className="grand-total text-gray-800" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 'bold', borderTop: '2px solid #000', paddingTop: '8px', marginTop: '8px', color: '#1f2937' }}>
                     <span>Total:</span>
                     <span>{formatCurrency(saleData.total)}</span>
                   </div>
-                  <div className="total-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', margin: '8px 0 0 0' }}>
+                  <div className="total-row text-gray-800" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', margin: '8px 0 0 0', color: '#1f2937' }}>
                     <span>Payment Mode:</span>
                     <span style={{ fontWeight: 'bold' }}>{saleData.paymentMethod}</span>
                   </div>
                 </div>
 
                 {/* Footer */}
-                <div className="footer" style={{ textAlign: 'center', marginTop: '15px', paddingTop: '10px', borderTop: '2px dashed #000', fontSize: '10px' }}>
-                  <div className="thank-you" style={{ fontWeight: 'bold', fontSize: '12px', marginBottom: '5px' }}>Thank You!</div>
-                  <div>Visit Again 😊</div>
-                  <div style={{ marginTop: '8px', fontSize: '9px' }}>www.tajalli.com</div>
+                <div className="footer text-gray-800" style={{ textAlign: 'center', marginTop: '15px', paddingTop: '10px', borderTop: '2px dashed #000', fontSize: '10px', color: '#1f2937' }}>
+                  <div className="thank-you" style={{ fontWeight: 'bold', fontSize: '12px', marginBottom: '5px', color: '#1f2937' }}>Thank You!</div>
+                  <div style={{ color: '#1f2937' }}>Visit Again 😊</div>
+                  <div style={{ marginTop: '8px', fontSize: '9px', color: '#1f2937' }}>www.tajalli.com</div>
                 </div>
               </div>
             </div>

@@ -4,12 +4,15 @@ import { useState, useEffect, useMemo } from 'react';
 import Layout from '@/components/Layout';
 import jsPDF from 'jspdf';
 import { PageLoader } from '@/components/Loader';
+import Pagination from '@/components/Pagination';
 
 export default function SuperAdminReports() {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchReports();
@@ -71,6 +74,19 @@ export default function SuperAdminReports() {
       totalItems
     };
   }, [filteredSales]);
+
+  // Pagination calculations for filtered sales
+  const totalPages = Math.ceil(filteredSales.length / itemsPerPage);
+  const paginatedSales = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredSales.slice(startIndex, endIndex);
+  }, [filteredSales, currentPage, itemsPerPage]);
+
+  // Reset to page 1 when filtered sales change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredSales.length]);
 
   // Download CSV
   const downloadCSV = () => {
@@ -235,21 +251,21 @@ export default function SuperAdminReports() {
 
   return (
     <Layout userRole="superadmin">
-      <div className="px-4 py-6 sm:px-0">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-          <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
-          <div className="flex flex-wrap gap-2">
+      <div className="px-2 sm:px-4 py-4 sm:py-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-4">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Reports</h1>
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             <button
               onClick={downloadCSV}
               disabled={filteredSales.length === 0}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              className="flex-1 sm:flex-none bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 active:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm sm:text-base touch-manipulation"
             >
               📥 Download CSV
             </button>
             <button
               onClick={downloadPDF}
               disabled={filteredSales.length === 0}
-              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              className="flex-1 sm:flex-none bg-red-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm sm:text-base touch-manipulation"
             >
               📄 Download PDF
             </button>
@@ -257,8 +273,8 @@ export default function SuperAdminReports() {
         </div>
 
         {/* Date Filters */}
-        <div className="bg-white shadow rounded-lg p-4 mb-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white shadow rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-800 mb-1">
                 From Date
@@ -296,18 +312,18 @@ export default function SuperAdminReports() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-6">
-          <div className="bg-white overflow-hidden shadow rounded-lg p-6">
-            <h3 className="text-sm font-medium text-gray-800">Total Revenue</h3>
-            <p className="mt-2 text-3xl font-bold text-gray-900">₹{summary.totalRevenue.toFixed(2)}</p>
+        <div className="grid grid-cols-1 gap-4 sm:gap-5 sm:grid-cols-3 mb-4 sm:mb-6">
+          <div className="bg-white overflow-hidden shadow rounded-lg p-4 sm:p-6">
+            <h3 className="text-xs sm:text-sm font-medium text-gray-800">Total Revenue</h3>
+            <p className="mt-2 text-2xl sm:text-3xl font-bold text-gray-900">₹{summary.totalRevenue.toFixed(2)}</p>
           </div>
-          <div className="bg-white overflow-hidden shadow rounded-lg p-6">
-            <h3 className="text-sm font-medium text-gray-800">Total Sales</h3>
-            <p className="mt-2 text-3xl font-bold text-gray-900">{summary.totalSales}</p>
+          <div className="bg-white overflow-hidden shadow rounded-lg p-4 sm:p-6">
+            <h3 className="text-xs sm:text-sm font-medium text-gray-800">Total Sales</h3>
+            <p className="mt-2 text-2xl sm:text-3xl font-bold text-gray-900">{summary.totalSales}</p>
           </div>
-          <div className="bg-white overflow-hidden shadow rounded-lg p-6">
-            <h3 className="text-sm font-medium text-gray-800">Total Items Sold</h3>
-            <p className="mt-2 text-3xl font-bold text-gray-900">{summary.totalItems}</p>
+          <div className="bg-white overflow-hidden shadow rounded-lg p-4 sm:p-6">
+            <h3 className="text-xs sm:text-sm font-medium text-gray-800">Total Items Sold</h3>
+            <p className="mt-2 text-2xl sm:text-3xl font-bold text-gray-900">{summary.totalItems}</p>
           </div>
         </div>
 
@@ -319,56 +335,112 @@ export default function SuperAdminReports() {
             <div className="text-gray-800">No sales found for the selected date range.</div>
           </div>
         ) : (
-          <div className="bg-white shadow overflow-hidden sm:rounded-md">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-800">
-                <thead className="bg-white">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Sale ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Customer Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Customer Mobile</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Items</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Total</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Payment Method</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-800">
-                  {filteredSales.map((sale) => (
-                    <tr key={sale._id || sale.id || `sale-${Math.random()}`}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {(sale._id || sale.id || '').toString().substring(0, 8)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                        {new Date(sale.createdAt || sale.date).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                        {sale.customerName || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                        {sale.customerMobile || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-800">
-                        <div className="max-w-xs">
-                          {sale.items?.map((item, index) => (
-                            <div key={index} className="text-xs">
-                              {item.name} ({item.quantity}{item.unit === 'kg' ? 'g' : 'pcs'})
-                            </div>
-                          )) || '0 items'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        ₹{sale.total?.toFixed(2) || '0.00'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                        {sale.paymentMethod || 'N/A'}
-                      </td>
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden lg:block bg-white shadow overflow-hidden sm:rounded-md mb-4">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Sale ID</th>
+                      <th className="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Date</th>
+                      <th className="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Customer Name</th>
+                      <th className="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Customer Mobile</th>
+                      <th className="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Items</th>
+                      <th className="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Total</th>
+                      <th className="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Payment Method</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {paginatedSales.map((sale) => (
+                      <tr key={sale._id || sale.id || `sale-${Math.random()}`}>
+                        <td className="px-4 xl:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {(sale._id || sale.id || '').toString().substring(0, 8)}
+                        </td>
+                        <td className="px-4 xl:px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                          {new Date(sale.createdAt || sale.date).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 xl:px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                          {sale.customerName || 'N/A'}
+                        </td>
+                        <td className="px-4 xl:px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                          {sale.customerMobile || 'N/A'}
+                        </td>
+                        <td className="px-4 xl:px-6 py-4 text-sm text-gray-800">
+                          <div className="max-w-xs">
+                            {sale.items?.map((item, index) => (
+                              <div key={index} className="text-xs">
+                                {item.name} ({item.quantity}{item.unit === 'kg' ? 'g' : 'pcs'})
+                              </div>
+                            )) || '0 items'}
+                          </div>
+                        </td>
+                        <td className="px-4 xl:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          ₹{sale.total?.toFixed(2) || '0.00'}
+                        </td>
+                        <td className="px-4 xl:px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                          {sale.paymentMethod || 'N/A'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+
+            {/* Mobile/Tablet Card View */}
+            <div className="lg:hidden space-y-3 mb-4">
+              {paginatedSales.map((sale) => (
+                <div key={sale._id || sale.id || `sale-${Math.random()}`} className="bg-white shadow rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <p className="text-xs text-gray-600">Sale ID</p>
+                      <p className="text-sm font-semibold text-gray-900">{(sale._id || sale.id || '').toString().substring(0, 8)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-600">Total</p>
+                      <p className="text-base font-semibold text-indigo-600">₹{sale.total?.toFixed(2) || '0.00'}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2 pt-2 border-t border-gray-100">
+                    <div className="flex justify-between">
+                      <span className="text-xs text-gray-600">Date:</span>
+                      <span className="text-xs text-gray-800">{new Date(sale.createdAt || sale.date).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-gray-600">Customer:</span>
+                      <span className="text-xs text-gray-800">{sale.customerName || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-gray-600">Mobile:</span>
+                      <span className="text-xs text-gray-800">{sale.customerMobile || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-gray-600">Payment:</span>
+                      <span className="text-xs text-gray-800 capitalize">{sale.paymentMethod || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 mb-1">Items:</p>
+                      <div className="space-y-1">
+                        {sale.items?.map((item, index) => (
+                          <div key={index} className="text-xs text-gray-800">
+                            • {item.name} ({item.quantity}{item.unit === 'kg' ? 'g' : 'pcs'})
+                          </div>
+                        )) || <span className="text-xs text-gray-800">0 items</span>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              itemsPerPage={itemsPerPage}
+              totalItems={filteredSales.length}
+            />
+          </>
         )}
       </div>
     </Layout>

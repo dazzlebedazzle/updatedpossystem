@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Image configuration
+  images: {
+    unoptimized: false,
+    remotePatterns: [],
+    formats: ['image/webp', 'image/avif'],
+  },
   // Security headers
   async headers() {
     return [

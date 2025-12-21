@@ -107,7 +107,7 @@ export default function Layout({ children, userRole, userName }) {
 
   return (
     <SidebarContext.Provider value={{ sidebarCollapsed, sidebarWidth }}>
-      <div className="min-h-screen bg-white flex">
+      <div className="min-h-screen bg-white flex overflow-x-hidden max-w-full">
         {/* Mobile Menu Overlay */}
         {mobileMenuOpen && (
           <div 
@@ -119,8 +119,9 @@ export default function Layout({ children, userRole, userName }) {
         {/* Sidebar */}
         <aside className={`
           ${sidebarCollapsed ? 'w-16' : 'w-64'} 
-          bg-white shadow-lg fixed h-full transition-all duration-300 z-50 flex flex-col overflow-x-hidden
+          bg-white shadow-lg fixed h-full transition-all duration-300 z-40 flex flex-col overflow-x-hidden
           ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          left-0 top-0
         `}>
         <div className={`${sidebarCollapsed ? 'p-2' : 'p-3'} border-b flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
           {!sidebarCollapsed && (
@@ -224,20 +225,20 @@ export default function Layout({ children, userRole, userName }) {
             className="fixed inset-0 bg-black/50 z-40"
             onClick={() => setShowProfileModal(false)}
           ></div>
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-3 sm:p-4 overflow-y-auto">
             <div 
-              className="bg-white rounded-lg shadow-xl max-w-md w-full"
+              className="bg-white rounded-lg shadow-xl max-w-md w-full my-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Profile Header */}
-              <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 rounded-t-lg">
-                <div className="flex items-center gap-4">
-                  <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center text-indigo-600 font-bold text-3xl shadow-lg">
+              <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 sm:p-6 rounded-t-lg">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white flex items-center justify-center text-indigo-600 font-bold text-2xl sm:text-3xl shadow-lg flex-shrink-0">
                     {(userName || user?.name || 'U').charAt(0).toUpperCase()}
                   </div>
-                  <div className="text-white">
-                    <h2 className="text-2xl font-bold">{userName || user?.name}</h2>
-                    <p className="text-indigo-100 capitalize text-sm mt-1">
+                  <div className="text-white min-w-0 flex-1">
+                    <h2 className="text-xl sm:text-2xl font-bold truncate">{userName || user?.name}</h2>
+                    <p className="text-indigo-100 capitalize text-xs sm:text-sm mt-1">
                       {userRole} Account
                     </p>
                   </div>
@@ -245,51 +246,51 @@ export default function Layout({ children, userRole, userName }) {
               </div>
 
               {/* Profile Details */}
-              <div className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 p-3 bg-white rounded-lg">
-                    <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="p-4 sm:p-6">
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-white rounded-lg">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="text-xs text-gray-800">Username</p>
-                      <p className="text-sm font-medium text-gray-900">{user?.username || 'N/A'}</p>
+                      <p className="text-sm font-medium text-gray-900 truncate">{user?.username || 'N/A'}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-3 bg-white rounded-lg">
-                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-white rounded-lg">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="text-xs text-gray-800">Email</p>
-                      <p className="text-sm font-medium text-gray-900">{user?.email || 'N/A'}</p>
+                      <p className="text-sm font-medium text-gray-900 truncate">{user?.email || 'N/A'}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-3 bg-white rounded-lg">
-                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-white rounded-lg">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                       </svg>
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="text-xs text-gray-800">Role</p>
                       <p className="text-sm font-medium text-gray-900 capitalize">{userRole}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-3 bg-white rounded-lg">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-white rounded-lg">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="text-xs text-gray-800">Account Status</p>
                       <p className="text-sm font-medium text-green-600 flex items-center gap-1">
                         <span className="w-2 h-2 bg-green-600 rounded-full"></span>
@@ -300,13 +301,13 @@ export default function Layout({ children, userRole, userName }) {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-3 mt-6">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-4 sm:mt-6">
                   <button
                     onClick={() => {
                       setShowProfileModal(false);
                       handleLogout();
                     }}
-                    className="flex-1 bg-red-600 text-white py-2.5 px-4 rounded-lg hover:bg-red-700 font-medium transition flex items-center justify-center gap-2"
+                    className="flex-1 bg-red-600 text-white py-2.5 px-4 rounded-lg hover:bg-red-700 font-medium transition flex items-center justify-center gap-2 text-sm sm:text-base"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -315,7 +316,7 @@ export default function Layout({ children, userRole, userName }) {
                   </button>
                   <button
                     onClick={() => setShowProfileModal(false)}
-                    className="flex-1 bg-white text-gray-800 py-2.5 px-4 rounded-lg hover:bg-gray-100 font-medium transition border border-gray-200"
+                    className="flex-1 bg-white text-gray-800 py-2.5 px-4 rounded-lg hover:bg-gray-100 font-medium transition border border-gray-200 text-sm sm:text-base"
                   >
                     Close
                   </button>
@@ -327,29 +328,29 @@ export default function Layout({ children, userRole, userName }) {
       )}
 
         {/* Main Content Area */}
-        <div className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'} ml-0`}>
+        <div className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'} ml-0 overflow-x-hidden max-w-full relative z-10`}>
           {/* Mobile Header */}
-          <div className="lg:hidden bg-white shadow-sm border-b sticky top-0 z-30 flex items-center justify-between p-4">
+          <div className="lg:hidden bg-white shadow-sm border-b sticky top-0 z-30 flex items-center justify-between p-3 sm:p-4">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="p-2 rounded-lg hover:bg-gray-100 transition"
+              className="p-2 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition touch-manipulation"
               aria-label="Open menu"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <h1 className="text-lg font-bold text-indigo-600">POS System</h1>
+            <h1 className="text-base sm:text-lg font-bold text-indigo-600 truncate px-2">POS System</h1>
             <button
               onClick={() => setShowProfileModal(true)}
-              className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-sm"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 touch-manipulation"
             >
               {(userName || user?.name || 'U').charAt(0).toUpperCase()}
             </button>
           </div>
 
           {/* Main Content */}
-          <main className="p-3 sm:p-4 md:p-6">
+          <main className={`p-3 sm:p-4 md:p-6 ${pathname?.includes('/pos') ? 'p-0 sm:p-0 md:p-0' : ''} overflow-x-hidden max-w-full`}>
             {children}
           </main>
         </div>

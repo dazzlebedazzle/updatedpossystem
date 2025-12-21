@@ -44,7 +44,8 @@ export async function GET(request, { params }) {
     }
     
     const userObj = user.toObject ? user.toObject() : user;
-    const { password: _, ...userWithoutPassword } = userObj;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...userWithoutPassword } = userObj;
     return NextResponse.json({ user: userWithoutPassword });
   } catch (error) {
     console.error('Get user error:', error);
@@ -133,7 +134,8 @@ export async function PUT(request, { params }) {
     }
     
     const userObj = updatedUser.toObject ? updatedUser.toObject() : updatedUser;
-    const { password: _, ...userWithoutPassword } = userObj;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...userWithoutPassword } = userObj;
     
     // If permissions were updated and this is the current user, update their session
     if (updates.permissions && userId === paramId) {
