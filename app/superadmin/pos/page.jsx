@@ -44,10 +44,6 @@ export default function SuperAdminPOS() {
 
   const INITIAL_BATCH_SIZE = 30; // Show first 30 products immediately
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
   const processProducts = (allProducts) => {
     // Remove duplicates using Set-based approach - more reliable
     const seenIds = new Set();
@@ -78,7 +74,7 @@ export default function SuperAdminPOS() {
     return uniqueProducts;
   };
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       const response = await fetch('/api/products');
       const data = await response.json();
@@ -95,8 +91,6 @@ export default function SuperAdminPOS() {
       
       // Load remaining products in background using requestIdleCallback or setTimeout
       if (uniqueProducts.length > INITIAL_BATCH_SIZE) {
-        const remainingProducts = uniqueProducts.slice(INITIAL_BATCH_SIZE);
-        
         // Use requestIdleCallback if available, otherwise setTimeout
         if (typeof window !== 'undefined' && window.requestIdleCallback) {
           window.requestIdleCallback(() => {
@@ -114,7 +108,11 @@ export default function SuperAdminPOS() {
       setLoading(false);
       setInitialLoadComplete(true);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   // Memoize unique products to avoid recalculating on every render
   const uniqueProducts = useMemo(() => {
@@ -446,7 +444,6 @@ export default function SuperAdminPOS() {
 
 // Memoized Product Card Component for better performance
 const ProductCard = memo(({ product, addToCart, getProductImage }) => {
-  const productId = product._id || product.id;
   const availableStock = (product.qty || 0) - (product.qty_sold || 0);
   const productImage = getProductImage(product);
   
@@ -532,7 +529,6 @@ function POSContent({
   setShowReceipt,
   receiptData
 }) {
-  const { sidebarWidth } = useSidebar();
   const [showCartMobile, setShowCartMobile] = useState(false);
 
   return (
