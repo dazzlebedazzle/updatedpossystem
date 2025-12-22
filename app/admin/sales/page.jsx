@@ -1,16 +1,52 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Layout from '@/components/Layout';
 import { PageLoader } from '@/components/Loader';
+import { getTodayIST } from '@/lib/date-utils';
 
 export default function AdminSales() {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     fetchSales();
+    // Set default date range to today (IST)
+    const today = getTodayIST();
+    setStartDate(today);
+    setEndDate(today);
   }, []);
+
+  // Filter sales by date range
+  const filteredSales = useMemo(() => {
+    if (!startDate && !endDate) {
+      return sales;
+    }
+
+    return sales.filter(sale => {
+      const saleDate = new Date(sale.createdAt || sale.date);
+      saleDate.setHours(0, 0, 0, 0);
+
+      if (startDate && endDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        return saleDate >= start && saleDate <= end;
+      } else if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        return saleDate >= start;
+      } else if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        return saleDate <= end;
+      }
+      return true;
+    });
+  }, [sales, startDate, endDate]);
 
   const fetchSales = async () => {
     try {
@@ -28,6 +64,46 @@ export default function AdminSales() {
     <Layout userRole="admin">
       <div className="px-2 py-4 sm:px-4 sm:py-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">Sales</h1>
+
+        {/* Date Filters */}
+        <div className="bg-white shadow rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-800 mb-1">
+                From Date
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-800 mb-1">
+                To Date
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={() => {
+                  const today = getTodayIST();
+                  setStartDate(today);
+                  setEndDate(today);
+                }}
+                className="w-full bg-white text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-50 font-medium border border-gray-200"
+              >
+                Clear Filters
+              </button>
+            </div>
+          </div>
+        </div>
 
         {loading ? (
           <PageLoader message="Loading sales..." />
@@ -47,7 +123,7 @@ export default function AdminSales() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {sales.map((sale) => (
+                    {filteredSales.map((sale) => (
                       <tr key={sale.id} className="hover:bg-gray-50">
                         <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{sale.id}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -65,7 +141,7 @@ export default function AdminSales() {
 
             {/* Mobile Card View */}
             <div className="md:hidden space-y-4">
-              {sales.map((sale) => (
+              {filteredSales.map((sale) => (
                 <div key={sale.id} className="bg-white shadow rounded-lg p-4 border border-gray-200">
                   <div className="flex justify-between items-start mb-3">
                     <div>

@@ -4,29 +4,65 @@ import { useState, useEffect, useMemo } from 'react';
 import Layout from '@/components/Layout';
 import { PageLoader } from '@/components/Loader';
 import Pagination from '@/components/Pagination';
+import { getTodayIST } from '@/lib/date-utils';
 
 export default function SuperAdminSales() {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   useEffect(() => {
     fetchSales();
+    // Set default date range to today (IST)
+    const today = getTodayIST();
+    setStartDate(today);
+    setEndDate(today);
   }, []);
 
+  // Filter sales by date range
+  const filteredSales = useMemo(() => {
+    if (!startDate && !endDate) {
+      return sales;
+    }
+
+    return sales.filter(sale => {
+      const saleDate = new Date(sale.createdAt || sale.date);
+      saleDate.setHours(0, 0, 0, 0);
+
+      if (startDate && endDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        return saleDate >= start && saleDate <= end;
+      } else if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        return saleDate >= start;
+      } else if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        return saleDate <= end;
+      }
+      return true;
+    });
+  }, [sales, startDate, endDate]);
+
   // Pagination calculations
-  const totalPages = Math.ceil(sales.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredSales.length / itemsPerPage);
   const paginatedSales = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return sales.slice(startIndex, endIndex);
-  }, [sales, currentPage, itemsPerPage]);
+    return filteredSales.slice(startIndex, endIndex);
+  }, [filteredSales, currentPage, itemsPerPage]);
 
   // Reset to page 1 when sales change
   useEffect(() => {
     setCurrentPage(1);
-  }, [sales.length]);
+  }, [filteredSales.length]);
 
   const fetchSales = async () => {
     try {
@@ -44,6 +80,46 @@ export default function SuperAdminSales() {
     <Layout userRole="superadmin">
       <div className="px-2 sm:px-4 py-4 sm:py-6">
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">All Sales</h1>
+
+        {/* Date Filters */}
+        <div className="bg-white shadow rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-800 mb-1">
+                From Date
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-800 mb-1">
+                To Date
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={() => {
+                  const today = getTodayIST();
+                  setStartDate(today);
+                  setEndDate(today);
+                }}
+                className="w-full bg-white text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-50 font-medium border border-gray-200"
+              >
+                Clear Filters
+              </button>
+            </div>
+          </div>
+        </div>
 
         {loading ? (
           <PageLoader message="Loading sales..." />
@@ -116,7 +192,7 @@ export default function SuperAdminSales() {
             totalPages={totalPages}
             onPageChange={setCurrentPage}
             itemsPerPage={itemsPerPage}
-            totalItems={sales.length}
+            totalItems={filteredSales.length}
           />
           </>
         )}

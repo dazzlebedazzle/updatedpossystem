@@ -4,29 +4,66 @@ import { useState, useEffect, useMemo } from 'react';
 import Layout from '@/components/Layout';
 import { PageLoader } from '@/components/Loader';
 import Pagination from '@/components/Pagination';
+import { getTodayIST } from '@/lib/date-utils';
 
 export default function SuperAdminCustomers() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   useEffect(() => {
     fetchCustomers();
+    // Set default date range to today (IST)
+    const today = getTodayIST();
+    setStartDate(today);
+    setEndDate(today);
   }, []);
 
+  // Filter customers by date range
+  const filteredCustomers = useMemo(() => {
+    if (!startDate && !endDate) {
+      return customers;
+    }
+
+    return customers.filter(customer => {
+      if (!customer.createdAt) return false;
+      const customerDate = new Date(customer.createdAt);
+      customerDate.setHours(0, 0, 0, 0);
+
+      if (startDate && endDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        return customerDate >= start && customerDate <= end;
+      } else if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        return customerDate >= start;
+      } else if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        return customerDate <= end;
+      }
+      return true;
+    });
+  }, [customers, startDate, endDate]);
+
   // Pagination calculations
-  const totalPages = Math.ceil(customers.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
   const paginatedCustomers = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return customers.slice(startIndex, endIndex);
-  }, [customers, currentPage, itemsPerPage]);
+    return filteredCustomers.slice(startIndex, endIndex);
+  }, [filteredCustomers, currentPage, itemsPerPage]);
 
   // Reset to page 1 when customers change
   useEffect(() => {
     setCurrentPage(1);
-  }, [customers.length]);
+  }, [filteredCustomers.length]);
 
   const fetchCustomers = async () => {
     try {
@@ -45,6 +82,46 @@ export default function SuperAdminCustomers() {
       <div className="px-2 sm:px-4 py-4 sm:py-6">
         <div className="mb-4 sm:mb-6">
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Customers</h1>
+        </div>
+
+        {/* Date Filters */}
+        <div className="bg-white shadow rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-800 mb-1">
+                From Date
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-800 mb-1">
+                To Date
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={() => {
+                  const today = getTodayIST();
+                  setStartDate(today);
+                  setEndDate(today);
+                }}
+                className="w-full bg-white text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-50 font-medium border border-gray-200"
+              >
+                Clear Filters
+              </button>
+            </div>
+          </div>
         </div>
 
         {loading ? (
@@ -107,7 +184,7 @@ export default function SuperAdminCustomers() {
             totalPages={totalPages}
             onPageChange={setCurrentPage}
             itemsPerPage={itemsPerPage}
-            totalItems={customers.length}
+            totalItems={filteredCustomers.length}
           />
           </>
         )}

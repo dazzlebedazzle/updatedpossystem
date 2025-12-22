@@ -35,6 +35,7 @@ export default function SuperAdminPOS() {
   const [showCheckoutPopup, setShowCheckoutPopup] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptData, setReceiptData] = useState(null);
+  const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
   const [customerData, setCustomerData] = useState({
     name: '',
     mobile: '',
@@ -74,59 +75,47 @@ export default function SuperAdminPOS() {
     return uniqueProducts;
   };
 
-  useEffect(() => {
-    let isMounted = true;
-    
-    const fetchProducts = async () => {
-      try {
-        const response = await fetch('/api/products');
-        const data = await response.json();
-        const allProducts = data.products || [];
-        
-        if (!isMounted) return;
-        
-        // Process all products
-        const uniqueProducts = processProducts(allProducts);
-        
-        // Show first batch immediately for fast initial render
-        const initialBatch = uniqueProducts.slice(0, INITIAL_BATCH_SIZE);
-        setProducts(initialBatch);
-        setLoading(false);
-        setInitialLoadComplete(true);
-        
-        // Load remaining products in background using requestIdleCallback or setTimeout
-        if (uniqueProducts.length > INITIAL_BATCH_SIZE) {
-          // Use requestIdleCallback if available, otherwise setTimeout
-          if (typeof window !== 'undefined' && window.requestIdleCallback) {
-            window.requestIdleCallback(() => {
-              if (isMounted) {
-                setProducts(uniqueProducts);
-              }
-            }, { timeout: 1000 });
-          } else {
-            // Fallback: load after a short delay to allow initial render
-            setTimeout(() => {
-              if (isMounted) {
-                setProducts(uniqueProducts);
-              }
-            }, 100);
-          }
+  const fetchProducts = useCallback(async () => {
+    try {
+      const response = await fetch('/api/products');
+      const data = await response.json();
+      const allProducts = data.products || [];
+      
+      // Process all products
+      const uniqueProducts = processProducts(allProducts);
+      
+      // Show first batch immediately for fast initial render
+      const initialBatch = uniqueProducts.slice(0, INITIAL_BATCH_SIZE);
+      setProducts(initialBatch);
+      setLoading(false);
+      setInitialLoadComplete(true);
+      
+      // Load remaining products in background using requestIdleCallback or setTimeout
+      if (uniqueProducts.length > INITIAL_BATCH_SIZE) {
+        // Use requestIdleCallback if available, otherwise setTimeout
+        if (typeof window !== 'undefined' && window.requestIdleCallback) {
+          window.requestIdleCallback(() => {
+            setProducts(uniqueProducts);
+          }, { timeout: 1000 });
+        } else {
+          // Fallback: load after a short delay to allow initial render
+          setTimeout(() => {
+            setProducts(uniqueProducts);
+          }, 100);
         }
-      } catch (error) {
-        console.error('Error fetching products:', error);
-        if (isMounted) {
-          setLoading(false);
-          setInitialLoadComplete(true);
-        }
+      } else {
+        setProducts(uniqueProducts);
       }
-    };
-    
-    fetchProducts();
-    
-    return () => {
-      isMounted = false;
-    };
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      setLoading(false);
+      setInitialLoadComplete(true);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   // Memoize unique products to avoid recalculating on every render
   const uniqueProducts = useMemo(() => {
@@ -320,6 +309,11 @@ export default function SuperAdminPOS() {
   }, [cart]);
 
   const handleCheckout = async () => {
+    // Prevent multiple submissions
+    if (isProcessingCheckout) {
+      return;
+    }
+
     if (cart.length === 0) {
       toast.warning('Cart is empty');
       return;
@@ -329,6 +323,8 @@ export default function SuperAdminPOS() {
       toast.error('Please fill all customer details');
       return;
     }
+
+    setIsProcessingCheckout(true);
 
     try {
       // Save customer first
@@ -410,6 +406,8 @@ export default function SuperAdminPOS() {
     } catch (error) {
       console.error('Error during checkout:', error);
       toast.error('Checkout failed');
+    } finally {
+      setIsProcessingCheckout(false);
     }
   };
 
@@ -446,6 +444,7 @@ export default function SuperAdminPOS() {
         updateQuantity={updateQuantity}
         getTotal={getTotal}
         handleCheckout={handleCheckout}
+        isProcessingCheckout={isProcessingCheckout}
         getProductImage={getProductImage}
         getCategoryIcon={getCategoryIcon}
         showReceipt={showReceipt}
@@ -537,6 +536,7 @@ function POSContent({
   updateQuantity, 
   getTotal, 
   handleCheckout,
+  isProcessingCheckout,
   getProductImage,
   getCategoryIcon,
   showReceipt,
@@ -976,9 +976,20 @@ function POSContent({
                   <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-5 sm:mt-6">
                     <button
                       type="submit"
-                      className="flex-1 bg-red-600 text-white py-2.5 sm:py-3 px-4 rounded-lg hover:bg-red-700 active:bg-red-800 font-medium transition text-sm sm:text-base touch-manipulation"
+                      disabled={isProcessingCheckout}
+                      className="flex-1 bg-red-600 text-white py-2.5 sm:py-3 px-4 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:bg-red-400 disabled:cursor-not-allowed font-medium transition text-sm sm:text-base touch-manipulation flex items-center justify-center gap-2"
                     >
-                      Save & Print
+                      {isProcessingCheckout ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4 sm:h-5 sm:w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span>Processing...</span>
+                        </>
+                      ) : (
+                        'Save & Print'
+                      )}
                     </button>
                     <button
                       type="button"

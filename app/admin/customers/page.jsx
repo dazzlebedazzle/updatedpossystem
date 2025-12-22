@@ -1,12 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Layout from '@/components/Layout';
 import { PageLoader } from '@/components/Loader';
+import { getTodayIST } from '@/lib/date-utils';
 
 export default function AdminCustomers() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -17,7 +20,41 @@ export default function AdminCustomers() {
 
   useEffect(() => {
     fetchCustomers();
+    // Set default date range to today (IST)
+    const today = getTodayIST();
+    setStartDate(today);
+    setEndDate(today);
   }, []);
+
+  // Filter customers by date range
+  const filteredCustomers = useMemo(() => {
+    if (!startDate && !endDate) {
+      return customers;
+    }
+
+    return customers.filter(customer => {
+      if (!customer.createdAt) return false;
+      const customerDate = new Date(customer.createdAt);
+      customerDate.setHours(0, 0, 0, 0);
+
+      if (startDate && endDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        return customerDate >= start && customerDate <= end;
+      } else if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        return customerDate >= start;
+      } else if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        return customerDate <= end;
+      }
+      return true;
+    });
+  }, [customers, startDate, endDate]);
 
   const fetchCustomers = async () => {
     try {
@@ -63,6 +100,46 @@ export default function AdminCustomers() {
           </button>
         </div>
 
+        {/* Date Filters */}
+        <div className="bg-white shadow rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-800 mb-1">
+                From Date
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-800 mb-1">
+                To Date
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={() => {
+                  const today = getTodayIST();
+                  setStartDate(today);
+                  setEndDate(today);
+                }}
+                className="w-full bg-white text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-50 font-medium border border-gray-200"
+              >
+                Clear Filters
+              </button>
+            </div>
+          </div>
+        </div>
+
         {loading ? (
           <PageLoader message="Loading customers..." />
         ) : (
@@ -80,7 +157,7 @@ export default function AdminCustomers() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {customers.map((customer) => (
+                    {filteredCustomers.map((customer) => (
                       <tr key={customer.id} className="hover:bg-gray-50">
                         <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{customer.name}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{customer.email}</td>
@@ -95,7 +172,7 @@ export default function AdminCustomers() {
 
             {/* Mobile Card View */}
             <div className="md:hidden space-y-4">
-              {customers.map((customer) => (
+              {filteredCustomers.map((customer) => (
                 <div key={customer.id} className="bg-white shadow rounded-lg p-4 border border-gray-200">
                   <h3 className="text-base font-semibold text-gray-900 mb-2">{customer.name}</h3>
                   <div className="space-y-2 text-sm">

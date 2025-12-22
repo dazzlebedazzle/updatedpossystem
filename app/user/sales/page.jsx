@@ -1,19 +1,55 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Layout from '@/components/Layout';
 import { authenticatedFetch } from '@/lib/api-client';
 import { PageLoader } from '@/components/Loader';
+import { getTodayIST } from '@/lib/date-utils';
 
 export default function UserSales() {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userInfo, setUserInfo] = useState(null);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     fetchUserInfo();
     fetchSales();
+    // Set default date range to today (IST)
+    const today = getTodayIST();
+    setStartDate(today);
+    setEndDate(today);
   }, []);
+
+  // Filter sales by date range
+  const filteredSales = useMemo(() => {
+    if (!startDate && !endDate) {
+      return sales;
+    }
+
+    return sales.filter(sale => {
+      const saleDate = new Date(sale.createdAt || sale.date);
+      saleDate.setHours(0, 0, 0, 0);
+
+      if (startDate && endDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        return saleDate >= start && saleDate <= end;
+      } else if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        return saleDate >= start;
+      } else if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        return saleDate <= end;
+      }
+      return true;
+    });
+  }, [sales, startDate, endDate]);
 
   const fetchUserInfo = async () => {
     try {
@@ -63,6 +99,42 @@ export default function UserSales() {
           </button>
         </div>
 
+        {/* Date Filters */}
+        <div className="bg-white shadow rounded-lg p-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-800 mb-1">Start Date</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="block w-full border border-gray-200 rounded-md px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-800 mb-1">End Date</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="block w-full border border-gray-200 rounded-md px-3 py-2"
+              />
+            </div>
+            <div className="flex items-end gap-2">
+              <button
+                onClick={() => {
+                  const today = getTodayIST();
+                  setStartDate(today);
+                  setEndDate(today);
+                }}
+                className="px-4 py-2 bg-white text-gray-800 rounded hover:bg-white"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+
         {loading ? (
           <PageLoader message="Loading sales..." />
         ) : (
@@ -78,14 +150,14 @@ export default function UserSales() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-800">
-                {sales.length === 0 ? (
+                {filteredSales.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-800">
-                      No sales found
+                      No sales found for the selected date range
                     </td>
                   </tr>
                 ) : (
-                  sales.map((sale) => (
+                  filteredSales.map((sale) => (
                     <tr key={sale._id || sale.id || `sale-${Math.random()}`}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {(sale._id || sale.id || '').toString().substring(0, 8)}

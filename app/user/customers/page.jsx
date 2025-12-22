@@ -1,16 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Layout from '@/components/Layout';
 import { hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
 import { authenticatedFetch } from '@/lib/api-client';
 import { PageLoader } from '@/components/Loader';
+import { getTodayIST } from '@/lib/date-utils';
 
 export default function UserCustomers() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userPermissions, setUserPermissions] = useState([]);
   const [agentInfo, setAgentInfo] = useState(null);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -22,6 +25,10 @@ export default function UserCustomers() {
   useEffect(() => {
     fetchUserPermissions();
     fetchAgentDetails();
+    // Set default date range to today (IST)
+    const today = getTodayIST();
+    setStartDate(today);
+    setEndDate(today);
   }, []);
 
   useEffect(() => {
@@ -29,6 +36,36 @@ export default function UserCustomers() {
       fetchCustomers();
     }
   }, [userPermissions]);
+
+  // Filter customers by date range
+  const filteredCustomers = useMemo(() => {
+    if (!startDate && !endDate) {
+      return customers;
+    }
+
+    return customers.filter(customer => {
+      if (!customer.createdAt) return false;
+      const customerDate = new Date(customer.createdAt);
+      customerDate.setHours(0, 0, 0, 0);
+
+      if (startDate && endDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        return customerDate >= start && customerDate <= end;
+      } else if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        return customerDate >= start;
+      } else if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        return customerDate <= end;
+      }
+      return true;
+    });
+  }, [customers, startDate, endDate]);
 
   const fetchUserPermissions = async () => {
     try {
@@ -162,6 +199,42 @@ export default function UserCustomers() {
           </div>
         </div>
 
+        {/* Date Filters */}
+        <div className="bg-white shadow rounded-lg p-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-800 mb-1">Start Date</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="block w-full border border-gray-200 rounded-md px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-800 mb-1">End Date</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="block w-full border border-gray-200 rounded-md px-3 py-2"
+              />
+            </div>
+            <div className="flex items-end gap-2">
+              <button
+                onClick={() => {
+                  const today = getTodayIST();
+                  setStartDate(today);
+                  setEndDate(today);
+                }}
+                className="px-4 py-2 bg-white text-gray-800 rounded hover:bg-white"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+
         {loading ? (
           <PageLoader message="Loading customers..." />
         ) : (
@@ -177,14 +250,14 @@ export default function UserCustomers() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-800">
-                  {customers.length === 0 ? (
+                  {filteredCustomers.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-800">
-                        No customers found
+                        No customers found for the selected date range
                       </td>
                     </tr>
                   ) : (
-                    customers.map((customer) => (
+                    filteredCustomers.map((customer) => (
                       <tr key={customer._id || customer.id || `customer-${Math.random()}`}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{customer.name}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{customer.email}</td>
