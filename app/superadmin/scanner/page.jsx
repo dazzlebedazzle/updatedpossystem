@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import Layout from '@/components/Layout';
 import { Html5Qrcode } from 'html5-qrcode';
 import { createWorker } from 'tesseract.js';
@@ -21,7 +22,6 @@ export default function ScannerPage() {
   const [processing, setProcessing] = useState(false);
   const [savedScans, setSavedScans] = useState([]);
   const [cameraPermissionStatus, setCameraPermissionStatus] = useState('prompt'); // 'prompt', 'granted', 'denied'
-  const scannerRef = useRef(null);
   const html5QrCodeRef = useRef(null);
 
   useEffect(() => {
@@ -235,7 +235,7 @@ export default function ScannerPage() {
           handleBarcodeScanned(decodedText);
           stopCamera();
         },
-        (errorMessage) => {
+        () => {
           // Ignore scanning errors (these are normal during scanning)
         }
       );
@@ -325,7 +325,7 @@ export default function ScannerPage() {
       try {
         const result = await html5QrCode.scanFile(imageFile, false);
         handleBarcodeScanned(result);
-      } catch (barcodeError) {
+      } catch {
         console.log('No barcode found in image, will try OCR');
       }
 
@@ -555,9 +555,9 @@ export default function ScannerPage() {
                     </p>
                     <ul className="text-xs text-blue-800 space-y-1 ml-4 list-disc">
                       <li>After enabling camera in settings, you <strong>must refresh this page</strong> for changes to take effect</li>
-                      <li>Look for "localhost:3000" or "127.0.0.1:3000" in the <strong>"Customized behaviors"</strong> section</li>
-                      <li>If the site shows as <strong>"Not allowed"</strong>, click on it and change to <strong>"Allow"</strong></li>
-                      <li>If the site is NOT listed, click "Start Camera" button first - this will add it to the list</li>
+                      <li>Look for &quot;localhost:3000&quot; or &quot;127.0.0.1:3000&quot; in the <strong>&quot;Customized behaviors&quot;</strong> section</li>
+                      <li>If the site shows as <strong>&quot;Not allowed&quot;</strong>, click on it and change to <strong>&quot;Allow&quot;</strong></li>
+                      <li>If the site is NOT listed, click &quot;Start Camera&quot; button first - this will add it to the list</li>
                       <li>If permission is permanently blocked, you may need to <strong>remove the site from the list</strong> (click the X icon), refresh this page, then try again</li>
                     </ul>
                   </div>
@@ -568,10 +568,10 @@ export default function ScannerPage() {
                     </p>
                     <ol className="text-xs text-red-800 space-y-1 ml-4 list-decimal">
                       <li>Open Camera Settings (click button above)</li>
-                      <li>Find "localhost:3000" in "Customized behaviors"</li>
+                      <li>Find &quot;localhost:3000&quot; in &quot;Customized behaviors&quot;</li>
                       <li>Click the <strong>X icon</strong> next to it to remove the blocked entry</li>
                       <li>Refresh this page</li>
-                      <li>Click "Start Camera" - the browser will ask for permission again</li>
+                      <li>Click &quot;Start Camera&quot; - the browser will ask for permission again</li>
                     </ol>
                   </div>
                   
@@ -649,9 +649,11 @@ export default function ScannerPage() {
               
               {imagePreview && (
                 <div className="mt-4">
-                  <img 
-                    src={imagePreview} 
-                    alt="Preview" 
+                  <Image
+                    src={imagePreview}
+                    alt="Preview"
+                    width={500}
+                    height={500}
                     className="max-w-full h-auto rounded-lg border border-gray-300"
                   />
                   <button

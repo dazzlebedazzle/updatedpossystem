@@ -155,7 +155,7 @@ export default function AdminDashboard() {
 
         {/* Daily Sales Statistics (IST) */}
         <div className="mt-6 sm:mt-8">
-          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Today's Sales (IST)</h2>
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Today&apos;s Sales (IST)</h2>
           <div className="grid grid-cols-1 gap-4 sm:gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <div className="bg-white overflow-hidden shadow rounded-lg p-4 sm:p-5">
               <div className="flex items-center">

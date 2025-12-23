@@ -69,7 +69,6 @@ export default function Layout({ children, userRole, userName }) {
       { href: `${basePath}/customers`, label: 'Customers', icon: '👤', module: MODULES.CUSTOMERS },
       { href: `${basePath}/inventory`, label: 'Inventory', icon: '📋', module: MODULES.INVENTORY },
       { href: `${basePath}/reports`, label: 'Reports', icon: '📈', module: MODULES.REPORTS },
-      { href: `${basePath}/scanner`, label: 'Scanner', icon: '📷', module: null, alwaysShow: true },
     ];
 
     // Filter menu items based on permissions only (no role restrictions)
