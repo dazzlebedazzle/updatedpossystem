@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { Html5Qrcode } from 'html5-qrcode';
 import { createWorker } from 'tesseract.js';
@@ -9,6 +10,7 @@ import { toast } from '@/lib/toast';
 import { authenticatedFetch } from '@/lib/api-client';
 
 export default function ScannerPage() {
+  const router = useRouter();
   const [scanning, setScanning] = useState(false);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -23,10 +25,23 @@ export default function ScannerPage() {
   const [savedScans, setSavedScans] = useState([]);
   const [cameraPermissionStatus, setCameraPermissionStatus] = useState('prompt'); // 'prompt', 'granted', 'denied'
   const html5QrCodeRef = useRef(null);
+  const videoRef = useRef(null);
+  const [autoScanMode, setAutoScanMode] = useState(false); // Auto-scan mode for OCR
+  const [userRole, setUserRole] = useState('user'); // Default to user
 
   useEffect(() => {
     fetchSavedScans();
     checkCameraPermission();
+    
+    // Get user role for navigation
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data.user && data.user.role) {
+          setUserRole(data.user.role);
+        }
+      })
+      .catch(err => console.error('Error fetching user role:', err));
   }, []);
 
   const checkCameraPermission = async () => {
@@ -160,32 +175,6 @@ export default function ScannerPage() {
     }
   };
 
-  const requestCameraPermissionDirectly = async () => {
-    // First, try to request permission directly - this will add the site to permissions list
-    try {
-      // Try with environment camera first (back camera)
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "environment" } 
-      });
-      // Stop the stream immediately - we just needed permission
-      stream.getTracks().forEach(track => track.stop());
-      return { success: true, deviceId: null };
-    } catch (err) {
-      // If environment camera fails, try any camera
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        throw err; // Re-throw permission errors
-      }
-      
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        stream.getTracks().forEach(track => track.stop());
-        return { success: true, deviceId: null };
-      } catch (e) {
-        throw e;
-      }
-    }
-  };
-
   const startCamera = async () => {
     // Check if camera API is available
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -193,79 +182,269 @@ export default function ScannerPage() {
       return;
     }
 
+    // Stop any existing camera instance
+    if (html5QrCodeRef.current) {
+      try {
+        await html5QrCodeRef.current.stop();
+        html5QrCodeRef.current.clear();
+        html5QrCodeRef.current = null;
+      } catch (e) {
+        console.log('Error stopping existing camera:', e);
+      }
+    }
+
     try {
       setScanning(true);
       
-      // First, try to request permission directly
-      // This will trigger the browser's permission prompt and add the site to the permissions list
+      // First, directly request camera permission to ensure it's granted
+      // This helps when permission is set to "Allow" but browser hasn't recognized it yet
+      let testStream = null;
       try {
-        await requestCameraPermissionDirectly();
-        setCameraPermissionStatus('granted');
-        toast.success('Camera permission granted! Starting scanner...', { duration: 2000 });
-      } catch (permErr) {
-        // Permission was denied - stop here and show instructions
-        setScanning(false);
-        setCameraPermissionStatus('denied');
-        
-        console.error('Camera permission denied. Error details:', {
-          name: permErr.name,
-          message: permErr.message,
-          fullError: permErr
+        console.log('Requesting camera permission directly...');
+        testStream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: "environment" } 
         });
-        
-        toast.error(
-          `Camera permission denied. Please click "Open Camera Settings" below and enable camera access for localhost:3000`,
-          { duration: 8000 }
-        );
-        return;
+        console.log('Camera permission granted directly');
+        // Stop the test stream immediately - we just needed permission
+        testStream.getTracks().forEach(track => track.stop());
+        setCameraPermissionStatus('granted');
+      } catch (permErr) {
+        // If direct permission fails, try user camera
+        if (permErr.name === 'NotAllowedError' || permErr.name === 'PermissionDeniedError') {
+          console.log('Environment camera permission denied, trying user camera...');
+          try {
+            testStream = await navigator.mediaDevices.getUserMedia({ 
+              video: { facingMode: "user" } 
+            });
+            console.log('User camera permission granted directly');
+            testStream.getTracks().forEach(track => track.stop());
+            setCameraPermissionStatus('granted');
+          } catch (userPermErr) {
+            // Both failed - permission is truly denied
+            throw permErr; // Throw the original error
+          }
+        } else {
+          throw permErr;
+        }
       }
-
-      // If we get here, permission was granted - now start html5-qrcode
+      
+      // Small delay to ensure permission state is updated
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Create new html5-qrcode instance
       const html5QrCode = new Html5Qrcode("reader");
       html5QrCodeRef.current = html5QrCode;
 
-      await html5QrCode.start(
-        { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0
-        },
-        (decodedText) => {
-          handleBarcodeScanned(decodedText);
-          stopCamera();
-        },
-        () => {
-          // Ignore scanning errors (these are normal during scanning)
+      // Try to start with environment camera (back camera)
+      try {
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0
+          },
+          async (decodedText) => {
+            // If auto-scan mode is on, also capture image and process with OCR
+            if (autoScanMode && html5QrCodeRef.current) {
+              try {
+                // Capture image from camera
+                const canvas = document.createElement('canvas');
+                const videoElement = document.getElementById('reader');
+                if (videoElement && videoElement.querySelector('video')) {
+                  const video = videoElement.querySelector('video');
+                  canvas.width = video.videoWidth;
+                  canvas.height = video.videoHeight;
+                  const ctx = canvas.getContext('2d');
+                  ctx.drawImage(video, 0, 0);
+                  
+                  // Convert to blob and process
+                  canvas.toBlob(async (blob) => {
+                    if (blob) {
+                      const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+                      setImageFile(file);
+                      setImagePreview(URL.createObjectURL(blob));
+                      
+                      // Automatically process with OCR
+                      await extractTextFromImage();
+                    }
+                  }, 'image/jpeg');
+                }
+              } catch (err) {
+                console.log('Error capturing image from camera:', err);
+              }
+            }
+            
+            handleBarcodeScanned(decodedText);
+            if (!autoScanMode) {
+              stopCamera();
+            }
+          },
+          (errorMessage) => {
+            // Ignore scanning errors (these are normal during scanning)
+            // Only log if it's not a common scanning error
+            if (!errorMessage.includes('NotFoundException') && !errorMessage.includes('No MultiFormat')) {
+              console.log('Scanning:', errorMessage);
+            }
+          }
+        );
+        
+        // Successfully started
+        setCameraPermissionStatus('granted');
+        toast.success('Camera started successfully!', { duration: 2000 });
+        
+      } catch (envErr) {
+        // If environment camera fails, try user camera (front camera)
+        console.log('Environment camera failed, trying user camera:', envErr);
+        
+        try {
+          await html5QrCode.start(
+            { facingMode: "user" },
+            {
+              fps: 10,
+              qrbox: { width: 250, height: 250 },
+              aspectRatio: 1.0
+            },
+            async (decodedText) => {
+              // If auto-scan mode is on, also capture image and process with OCR
+              if (autoScanMode && html5QrCodeRef.current) {
+                try {
+                  // Capture image from camera
+                  const canvas = document.createElement('canvas');
+                  const videoElement = document.getElementById('reader');
+                  if (videoElement && videoElement.querySelector('video')) {
+                    const video = videoElement.querySelector('video');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0);
+                    
+                    // Convert to blob and process
+                    canvas.toBlob(async (blob) => {
+                      if (blob) {
+                        const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+                        setImageFile(file);
+                        setImagePreview(URL.createObjectURL(blob));
+                        
+                        // Automatically process with OCR
+                        await extractTextFromImage();
+                      }
+                    }, 'image/jpeg');
+                  }
+                } catch (err) {
+                  console.log('Error capturing image from camera:', err);
+                }
+              }
+              
+              handleBarcodeScanned(decodedText);
+              if (!autoScanMode) {
+                stopCamera();
+              }
+            },
+            (errorMessage) => {
+              if (!errorMessage.includes('NotFoundException') && !errorMessage.includes('No MultiFormat')) {
+                console.log('Scanning:', errorMessage);
+              }
+            }
+          );
+          
+          setCameraPermissionStatus('granted');
+          toast.success('Camera started successfully!', { duration: 2000 });
+          
+        } catch (userErr) {
+          // Both failed, throw the error
+          throw userErr;
         }
-      );
+      }
       
     } catch (err) {
       console.error('Error starting camera:', err);
       setScanning(false);
       
+      // Clean up
+      if (html5QrCodeRef.current) {
+        try {
+          await html5QrCodeRef.current.stop().catch(() => {});
+          html5QrCodeRef.current.clear();
+          html5QrCodeRef.current = null;
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+      }
+      
       // Parse the error message to determine the issue
       const errorMessage = err.message || err.toString() || '';
       const errorName = err.name || '';
+      const errString = JSON.stringify(err).toLowerCase();
       
-      // Check for permission denied errors
+      // Check for permission denied errors - be very thorough
       if (errorName === 'NotAllowedError' || 
           errorName === 'PermissionDeniedError' ||
           errorMessage.includes('Permission denied') ||
           errorMessage.includes('NotAllowedError') ||
+          errorMessage.includes('Permission') ||
+          errString.includes('notallowederror') ||
+          errString.includes('permission denied') ||
           (errorMessage.includes('permission') && errorMessage.toLowerCase().includes('denied'))) {
         
         setCameraPermissionStatus('denied');
         
+        // Show a detailed alert with instructions
+        const userAgent = navigator.userAgent.toLowerCase();
+        let instructions = '';
+        
+        if (userAgent.includes('chrome') || userAgent.includes('edg')) {
+          instructions = `🔴 CAMERA ACCESS BLOCKED 🔴
+
+Your browser has BLOCKED camera access. Here's how to enable it:
+
+METHOD 1 (Easiest):
+1. Look at your browser address bar (where it says "localhost:3000")
+2. Click the lock icon (🔒) or camera icon (📷) on the LEFT side
+3. Find "Camera" in the dropdown
+4. Change it from "Block" to "Allow"
+5. Refresh this page (F5)
+
+METHOD 2 (If icon doesn't show):
+1. Copy this: chrome://settings/content/camera
+2. Paste it in a new tab and press Enter
+3. Scroll down to "Customized behaviors"
+4. Find "localhost:3000" or "127.0.0.1:3000"
+5. If it says "Not allowed", click it and select "Allow"
+6. If it's NOT listed, refresh this page, click "Start Camera", then go back to settings
+7. Refresh this page
+
+After enabling, refresh this page and try again!`;
+        } else {
+          instructions = `🔴 CAMERA ACCESS BLOCKED 🔴
+
+Your browser has BLOCKED camera access. Here's how to enable it:
+
+1. Look for a lock or camera icon in your browser address bar
+2. Click it and find "Camera" or "Permissions"
+3. Change camera access from "Block" to "Allow"
+4. Refresh this page (F5)
+5. Click "Start Camera" again
+
+If you can't find it:
+- Go to your browser Settings
+- Search for "Camera" or "Permissions"
+- Find "localhost:3000" and set camera to "Allow"
+- Refresh this page`;
+        }
+        
+        alert(instructions);
+        
         toast.error(
-          `Camera permission denied. Click "Open Camera Settings" button below to enable camera access for this site.`,
-          { duration: 8000 }
+          `Camera permission is BLOCKED. Please check the alert instructions above, enable camera access, and refresh the page.`,
+          { duration: 12000 }
         );
         
       } else if (errorName === 'NotFoundError' || 
                  errorName === 'DevicesNotFoundError' ||
                  errorMessage.includes('No camera') ||
-                 errorMessage.includes('device not found')) {
+                 errorMessage.includes('device not found') ||
+                 errorMessage.includes('NotFoundError')) {
         toast.error('No camera found. Please connect a camera device and try again.');
         
       } else if (errorName === 'NotReadableError' || 
@@ -276,7 +455,7 @@ export default function ScannerPage() {
         
       } else {
         console.error('Unknown camera error:', err);
-        toast.error('Failed to start camera. Please check your browser settings and try again.');
+        toast.error('Failed to start camera. Please check your browser settings and camera permissions.');
       }
     }
   };
@@ -294,6 +473,74 @@ export default function ScannerPage() {
     }
   };
 
+  // Capture image from camera and automatically process with OCR
+  const captureImageFromCamera = async () => {
+    if (!scanning || !html5QrCodeRef.current) {
+      toast.error('Please start camera first');
+      return;
+    }
+
+    try {
+      // Get video element from html5-qrcode
+      const readerElement = document.getElementById('reader');
+      if (!readerElement) {
+        toast.error('Camera not ready');
+        return;
+      }
+
+      const video = readerElement.querySelector('video');
+      if (!video || video.readyState !== video.HAVE_ENOUGH_DATA) {
+        toast.error('Camera not ready. Please wait a moment.');
+        return;
+      }
+
+      // Create canvas and capture frame
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+
+      // Convert to blob
+      canvas.toBlob(async (blob) => {
+        if (blob) {
+          const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+          setImageFile(file);
+          setImagePreview(URL.createObjectURL(blob));
+          
+          toast.info('Image captured! Processing with OCR...', { duration: 2000 });
+          
+          // Automatically process with OCR
+          setProcessing(true);
+          try {
+            // Try barcode scan first
+            const html5QrCode = new Html5Qrcode("reader");
+            try {
+              const result = await html5QrCode.scanFile(file, false);
+              console.log('Barcode scanned from captured image:', result);
+              await handleBarcodeScanned(result);
+            } catch {
+              console.log('No barcode found in captured image, will try OCR');
+            }
+
+            // Then try OCR for text extraction
+            await extractTextFromImage();
+          } catch (error) {
+            console.error('Error processing captured image:', error);
+            toast.error('Failed to process captured image');
+          } finally {
+            setProcessing(false);
+          }
+        } else {
+          toast.error('Failed to capture image');
+        }
+      }, 'image/jpeg', 0.95);
+    } catch (error) {
+      console.error('Error capturing image:', error);
+      toast.error('Failed to capture image from camera');
+    }
+  };
+
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -306,9 +553,192 @@ export default function ScannerPage() {
     }
   };
 
-  const handleBarcodeScanned = (barcode) => {
+  // Extract EAN code from long barcode pattern
+  // Example: 211000060002004700250 -> remove 2110000 from start and 00250 from end -> 600020047
+  const extractEANFromBarcode = (barcode) => {
+    if (!barcode || typeof barcode !== 'string') return null;
+    
+    // Pattern: 2110000 + EAN_CODE + 00250 (or similar suffix)
+    // Remove 2110000 from start if present
+    let ean = barcode;
+    if (ean.startsWith('2110000')) {
+      ean = ean.substring(7); // Remove first 7 characters
+    }
+    
+    // Remove suffix pattern (usually 5 digits like 00250, but could vary)
+    // Try to remove common patterns: 00250, 00025, etc.
+    if (ean.length > 5) {
+      // Remove last 5 digits if they match a pattern like 00250, 00025, etc.
+      const last5 = ean.substring(ean.length - 5);
+      if (/^0{2,}\d{1,3}$/.test(last5)) {
+        ean = ean.substring(0, ean.length - 5);
+      } else if (ean.length > 3) {
+        // Try removing last 3 digits if they're zeros
+        const last3 = ean.substring(ean.length - 3);
+        if (/^0{2,}\d?$/.test(last3)) {
+          ean = ean.substring(0, ean.length - 3);
+        }
+      }
+    }
+    
+    // Ensure it's a valid number and has reasonable length (EAN codes are usually 8-13 digits)
+    const eanNum = parseInt(ean);
+    if (isNaN(eanNum) || eanNum <= 0 || ean.length < 6) {
+      // If extraction failed, try the original barcode
+      const originalNum = parseInt(barcode);
+      if (!isNaN(originalNum) && originalNum > 0) {
+        return originalNum;
+      }
+      return null;
+    }
+    
+    return eanNum;
+  };
+
+  const handleBarcodeScanned = async (barcode) => {
     setScannedData(prev => ({ ...prev, barcode }));
     toast.success(`Barcode scanned: ${barcode}`);
+    
+    // Extract EAN code from barcode
+    const eanCode = extractEANFromBarcode(barcode);
+    console.log('Extracted EAN code:', eanCode, 'from barcode:', barcode);
+    
+    if (eanCode) {
+      // Try to find product by EAN code and add to cart
+      await searchProductByBarcodeAndAddToCart(eanCode.toString());
+    } else {
+      // Fallback: try original barcode
+      await searchProductByBarcode(barcode);
+    }
+  };
+
+  const searchProductByBarcode = async (barcode) => {
+    if (!barcode || barcode.trim().length === 0) return null;
+    
+    try {
+      const response = await authenticatedFetch('/api/products');
+      if (response.ok) {
+        const data = await response.json();
+        const products = data.products || [];
+        
+        // Try to match barcode with EAN_code (convert to number if possible)
+        const barcodeNum = parseInt(barcode);
+        const matchedProduct = products.find(product => {
+          const productObj = product.toObject ? product.toObject() : product;
+          const eanCode = productObj.EAN_code;
+          // Match as number or string
+          return eanCode === barcodeNum || eanCode?.toString() === barcode.toString();
+        });
+        
+        if (matchedProduct) {
+          const productObj = matchedProduct.toObject ? matchedProduct.toObject() : matchedProduct;
+          toast.success(`Product found: ${productObj.product_name}`);
+          
+          // Pre-fill scanned data with product information
+          setScannedData(prev => ({
+            ...prev,
+            productName: productObj.product_name || prev.productName,
+            barcode: barcode
+          }));
+          
+          return productObj;
+        } else {
+          toast.info('Product not found in database. You can still save the scanned data.');
+          return null;
+        }
+      }
+    } catch (error) {
+      console.error('Error searching product by barcode:', error);
+      // Don't show error toast - it's okay if product lookup fails
+      return null;
+    }
+    return null;
+  };
+
+  // Add product to cart automatically
+  const addProductToCart = async (product, quantity, price) => {
+    try {
+      // Store cart item in localStorage so POS page can read it
+      const cartItem = {
+        productId: product._id || product.id,
+        name: product.product_name || product.name,
+        price: price || product.price || 0,
+        quantity: quantity, // in grams for kg products, or units for piece products
+        unit: product.unit || 'kg',
+        profit: product.profit || 0,
+        product_code: product.EAN_code || '',
+        discount: product.discount || 0,
+        addedAt: new Date().toISOString(),
+        source: 'scanner'
+      };
+
+      // Get existing cart items from localStorage
+      const existingCart = JSON.parse(localStorage.getItem('pos_cart') || '[]');
+      
+      // Check if product already exists in cart
+      const existingItemIndex = existingCart.findIndex(item => item.productId === cartItem.productId);
+      
+      if (existingItemIndex >= 0) {
+        // Update quantity if exists
+        existingCart[existingItemIndex].quantity += cartItem.quantity;
+        toast.success(`Product quantity updated in cart`);
+      } else {
+        // Add new item
+        existingCart.push(cartItem);
+        toast.success(`Product added to cart: ${cartItem.name}`);
+      }
+
+      // Save to localStorage
+      localStorage.setItem('pos_cart', JSON.stringify(existingCart));
+      
+      // Also trigger a custom event so POS page can listen and update
+      window.dispatchEvent(new CustomEvent('cartUpdated', { detail: cartItem }));
+      
+      console.log('Product added to cart:', cartItem);
+      
+      // Redirect to POS page after a short delay
+      setTimeout(() => {
+        const basePath = userRole === 'superadmin' ? '/superadmin' : userRole === 'admin' ? '/admin' : '/user';
+        router.push(`${basePath}/pos`);
+      }, 1000); // 1 second delay to show the success message
+      
+      return true;
+    } catch (error) {
+      console.error('Error adding product to cart:', error);
+      toast.error('Failed to add product to cart');
+      return false;
+    }
+  };
+
+  // Search product by barcode and automatically add to cart
+  const searchProductByBarcodeAndAddToCart = async (eanCode, weight = null, price = null) => {
+    const product = await searchProductByBarcode(eanCode);
+    
+    if (product) {
+      // Extract weight and price from scanned data if available
+      let quantity = 100; // Default: 100g
+      let finalPrice = product.price || 0;
+      
+      if (weight) {
+        // Parse weight (e.g., "0.25kg" -> 0.25 -> 250g)
+        const weightMatch = weight.match(/(\d+\.?\d*)\s*kg/i);
+        if (weightMatch) {
+          const weightKg = parseFloat(weightMatch[1]);
+          quantity = Math.round(weightKg * 1000); // Convert to grams
+        }
+      }
+      
+      if (price) {
+        // Parse price (e.g., "Rs. 300.00" or "300.00" -> 300.00)
+        const priceMatch = price.match(/(\d+\.?\d*)/);
+        if (priceMatch) {
+          finalPrice = parseFloat(priceMatch[1]);
+        }
+      }
+      
+      // Add to cart
+      await addProductToCart(product, quantity, finalPrice);
+    }
   };
 
   const scanBarcodeFromImage = async () => {
@@ -324,7 +754,8 @@ export default function ScannerPage() {
       // Try to scan barcode from image
       try {
         const result = await html5QrCode.scanFile(imageFile, false);
-        handleBarcodeScanned(result);
+        console.log('Barcode scanned from image:', result);
+        await handleBarcodeScanned(result);
       } catch {
         console.log('No barcode found in image, will try OCR');
       }
@@ -340,67 +771,353 @@ export default function ScannerPage() {
     }
   };
 
-  const extractTextFromImage = async () => {
+  const preprocessImage = (file, mode = 'grayscale') => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      img.onload = () => {
+        // Scale up image if it's too small (helps OCR)
+        const scale = img.width < 800 ? 2 : 1;
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        
+        // Use better image smoothing
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        // Draw scaled image
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        // Get image data for processing
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        
+        if (mode === 'grayscale') {
+          // Convert to grayscale with better luminance calculation
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+            
+            // Enhanced contrast adjustment
+            let enhanced = ((gray / 255) - 0.5) * 2; // Normalize to -1 to 1
+            enhanced = Math.pow(enhanced * 1.2, 1.2); // Apply gamma correction
+            enhanced = ((enhanced + 1) / 2) * 255; // Denormalize
+            enhanced = Math.max(0, Math.min(255, enhanced));
+            
+            data[i] = enhanced;
+            data[i + 1] = enhanced;
+            data[i + 2] = enhanced;
+          }
+        } else if (mode === 'binary') {
+          // Binary threshold mode
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+            
+            // Adaptive threshold (Otsu-like)
+            const threshold = 128;
+            const binary = gray > threshold ? 255 : 0;
+            
+            data[i] = binary;
+            data[i + 1] = binary;
+            data[i + 2] = binary;
+          }
+        }
+        
+        // Put processed image data back
+        ctx.putImageData(imageData, 0, 0);
+        
+        // Convert canvas to blob
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error('Failed to process image'));
+          }
+        }, 'image/png');
+      };
+      
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  const extractTextUsingOCRAPI = async () => {
     if (!imageFile) return;
 
     setProcessing(true);
     try {
-      const worker = await createWorker('eng');
-      const { data: { text } } = await worker.recognize(imageFile);
-      await worker.terminate();
+      // Use OCR.space API for better quality
+      const formData = new FormData();
+      formData.append('image', imageFile);
 
-      // Parse the extracted text
-      parseExtractedText(text);
-      toast.success('Text extracted from image');
+      const response = await authenticatedFetch('/api/ocr', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      // Show full response in console as object
+      console.log('=== OCR API FULL RESPONSE ===');
+      console.log(JSON.stringify(data, null, 2));
+      console.log('=== EXTRACTED TEXT ===');
+      console.log(data.text || data.extractedText || 'No text found');
+      console.log('============================');
+
+      if (data.success && data.text) {
+        // Parse the extracted text (now async)
+        await parseExtractedText(data.text);
+        toast.success('Text extracted successfully using OCR API');
+      } else {
+        console.error('OCR API Error:', data);
+        toast.error(data.error || 'Failed to extract text');
+      }
     } catch (error) {
-      console.error('Error extracting text:', error);
-      toast.error('Failed to extract text from image');
+      console.error('OCR API Error:', error);
+      toast.error('Failed to extract text using OCR API');
+      throw error; // Re-throw to allow fallback
     } finally {
       setProcessing(false);
     }
   };
 
-  const parseExtractedText = (text) => {
+  const extractTextFromImage = async () => {
+    if (!imageFile) return;
+
+    // Try OCR API first (better quality, free API)
+    try {
+      await extractTextUsingOCRAPI();
+      return; // If API works, don't use Tesseract
+    } catch (error) {
+      console.log('OCR API failed, falling back to Tesseract:', error);
+      toast.info('OCR API failed, trying Tesseract fallback...');
+      // Continue to Tesseract fallback
+    }
+
+    setProcessing(true);
+    let worker = null;
+    try {
+      worker = await createWorker('eng');
+      
+      // Try multiple strategies with different image preprocessing
+      let bestResult = null;
+      let bestText = '';
+      
+      // Strategy 1: Try original image first (sometimes original is better)
+      try {
+        await worker.setParameters({
+          tessedit_pageseg_mode: '3', // Auto page segmentation
+        });
+        const result1 = await worker.recognize(imageFile);
+        if (result1.data.text && result1.data.text.trim().length > bestText.length) {
+          bestResult = result1;
+          bestText = result1.data.text.trim();
+        }
+      } catch (e) {
+        console.log('Strategy 1 failed:', e);
+      }
+      
+      // Strategy 2: Try with grayscale preprocessed image
+      try {
+        toast.info('Trying enhanced image processing...', { duration: 1500 });
+        const processedGrayscale = await preprocessImage(imageFile, 'grayscale');
+        await worker.setParameters({
+          tessedit_pageseg_mode: '3',
+        });
+        const result2 = await worker.recognize(processedGrayscale);
+        if (result2.data.text && result2.data.text.trim().length > bestText.length) {
+          bestResult = result2;
+          bestText = result2.data.text.trim();
+        }
+      } catch (e) {
+        console.log('Strategy 2 failed:', e);
+      }
+      
+      // Strategy 3: Try with binary threshold preprocessed image
+      try {
+        const processedBinary = await preprocessImage(imageFile, 'binary');
+        await worker.setParameters({
+          tessedit_pageseg_mode: '6', // Single uniform block
+        });
+        const result3 = await worker.recognize(processedBinary);
+        if (result3.data.text && result3.data.text.trim().length > bestText.length) {
+          bestResult = result3;
+          bestText = result3.data.text.trim();
+        }
+      } catch (e) {
+        console.log('Strategy 3 failed:', e);
+      }
+      
+      // Clean up worker
+      await worker.terminate();
+      worker = null;
+      
+      // Use the best result
+      const { data: { text } } = bestResult || { data: { text: '' } };
+
+      // Check if text was extracted
+      if (!text || text.trim().length === 0) {
+        toast.info('No text found in image');
+        return;
+      }
+
+      // Clean and normalize the extracted text
+      const cleanedText = cleanExtractedText(text);
+      
+      // Show extracted text in console for debugging
+      console.log('Raw extracted text:', text);
+      console.log('Cleaned extracted text:', cleanedText);
+      
+      // Parse the extracted text (now async)
+      await parseExtractedText(cleanedText);
+      toast.success('Text extracted and parsed from image');
+    } catch (error) {
+      // Ensure worker is terminated even on error
+      if (worker) {
+        try {
+          await worker.terminate();
+        } catch (terminateError) {
+          console.log('Error terminating worker:', terminateError);
+        }
+      }
+      
+      // Log detailed error information
+      const errorMessage = error?.message || error?.toString() || 'Unknown error occurred';
+      const errorName = error?.name || 'Error';
+      console.error('Error extracting text:', {
+        name: errorName,
+        message: errorMessage,
+        error: error
+      });
+      
+      toast.error(`Failed to extract text: ${errorMessage}`);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const cleanExtractedText = (text) => {
+    if (!text) return '';
+    
+    // Split into lines first to preserve structure
+    const lines = text.split(/\n/).map(line => line.trim()).filter(line => line.length > 0);
+    
+    // Clean each line more carefully
+    const cleanedLines = lines.map(line => {
+      return line
+        // Remove garbage characters but keep alphanumeric, spaces, and common punctuation
+        .replace(/[^\w\s\d.,:/-₹Rs$₹\u20B9kgKG]/gi, '')
+        // Fix common OCR errors
+        .replace(/\|/g, 'I')
+        .replace(/[`'´]/g, "'")
+        // Clean up excessive spaces but preserve word boundaries
+        .replace(/\s+/g, ' ')
+        .trim();
+    }).filter(line => {
+      // Filter out lines that are mostly garbage (too many single characters or too short)
+      if (line.length < 2) return false;
+      const wordCount = line.split(/\s+/).length;
+      // Keep lines that have reasonable word structure
+      return wordCount > 0;
+    });
+    
+    // Join lines back together with newlines to preserve structure
+    return cleanedLines.join('\n');
+  };
+
+  const parseExtractedText = async (text) => {
+    console.log('Extracted text:', text); // Log for debugging
+    
     const lines = text.split('\n').map(line => line.trim()).filter(line => line);
     
     let productName = '';
     let weight = '';
     let pricePerKg = '';
     let totalPrice = '';
+    let barcode = scannedData.barcode || '';
 
-    // Try to find product name (usually first line or contains product keywords)
+    // Try to find product name - look for lines that don't start with numbers and aren't common label text
+    const skipKeywords = ['rs', 'weight', 'total', 'includes', 'non', 'pcr', 'label', 'kg', 'reliance', 'smart', 'point'];
     for (const line of lines) {
-      if (line.length > 3 && !line.match(/^\d+/) && !line.includes('Rs') && !line.includes('Weight')) {
-        productName = line;
-        break;
+      const lowerLine = line.toLowerCase();
+      const isSkipLine = skipKeywords.some(keyword => lowerLine.includes(keyword));
+      const isNumberOnly = /^\d+$/.test(line);
+      const isLongNumber = line.length > 15 && /^\d+$/.test(line);
+      
+      if (!isSkipLine && !isNumberOnly && line.length > 3 && !isLongNumber) {
+        // Check if it looks like a product name (not all caps with special chars, not just numbers)
+        if (!/^[A-Z\s]+$/.test(line) || line.length > 5) {
+          productName = line;
+          break;
+        }
       }
     }
 
-    // Extract weight (look for "Weight: X.XXkg" or similar)
-    const weightMatch = text.match(/Weight[:\s]*([\d.]+)\s*kg/i);
+    // Extract barcode - long numeric sequences (usually 12+ digits, like 211000060002004700250)
+    const barcodeMatch = text.match(/\b(\d{15,})\b/);
+    if (barcodeMatch) {
+      barcode = barcodeMatch[1];
+    }
+
+    // Extract weight (look for "Weight: X.XXkg" or "0.25kg" or "0.25kg-" patterns)
+    const weightMatch = text.match(/Weight[:\s]*([\d.]+)\s*kg/i) || 
+                       text.match(/(\d+\.\d+)\s*kg/i) ||
+                       text.match(/weight[:\s]*([\d.]+)\s*kg/i);
     if (weightMatch) {
       weight = weightMatch[1] + ' kg';
     }
 
-    // Extract price per kg (look for "Rs. Kg: XXX" or "Rs/Kg: XXX")
-    const pricePerKgMatch = text.match(/Rs[.\s/]*Kg[:\s]*([\d.]+)/i);
+    // Extract price per kg (look for "Rs. /Kg: ₹1200" or "Rs/Kg: 1200" or "Rs./K3: 21200" or "₹1200" patterns)
+    const pricePerKgMatch = text.match(/Rs[.\s/]*\/?\s*K[g3][:\s]*[₹]?([\d,]+\.?\d*)/i) || 
+                            text.match(/[₹](\d+\.?\d*)\s*\/?\s*kg/i);
     if (pricePerKgMatch) {
-      pricePerKg = 'Rs. ' + pricePerKgMatch[1] + ' /kg';
+      pricePerKg = 'Rs. ' + pricePerKgMatch[1].replace(/,/g, '') + ' /kg';
     }
 
-    // Extract total price (look for "Total Rs:- XXXX.XX" or "Total: Rs XXXX.XX")
-    const totalPriceMatch = text.match(/Total[:\s]*Rs[:\s-]*([\d.]+)/i);
+    // Extract total price (look for "Total Rs:- 300.00" or "Total: Rs 300" or "₹300.00" or "Total Rs:- 300.00")
+    const totalPriceMatch = text.match(/Total[:\s]*Rs[:\s-]*[₹]?([\d,]+\.?\d*)/i) || 
+                           text.match(/[₹](\d+\.?\d*)\s*$/i) ||
+                           text.match(/Total[:\s]*Rs[:\s-]*([\d,]+\.?\d*)/i);
     if (totalPriceMatch) {
-      totalPrice = 'Rs. ' + totalPriceMatch[1];
+      totalPrice = 'Rs. ' + totalPriceMatch[1].replace(/,/g, '');
     }
 
-    setScannedData({
-      barcode: scannedData.barcode || '',
-      productName: productName || scannedData.productName,
-      weight: weight || scannedData.weight,
-      pricePerKg: pricePerKg || scannedData.pricePerKg,
-      totalPrice: totalPrice || scannedData.totalPrice
+    setScannedData(prev => {
+      const newData = {
+        barcode: barcode || prev.barcode,
+        productName: productName || prev.productName,
+        weight: weight || prev.weight,
+        pricePerKg: pricePerKg || prev.pricePerKg,
+        totalPrice: totalPrice || prev.totalPrice
+      };
+      
+      return newData;
     });
+
+    // If barcode was found, extract EAN and automatically add to cart
+    if (barcode && barcode !== scannedData.barcode) {
+      const eanCode = extractEANFromBarcode(barcode);
+      console.log('Extracted EAN code:', eanCode, 'from barcode:', barcode);
+      
+      if (eanCode) {
+        // Automatically search product and add to cart
+        await searchProductByBarcodeAndAddToCart(
+          eanCode.toString(),
+          weight || scannedData.weight,
+          totalPrice || scannedData.totalPrice
+        );
+      } else {
+        // Fallback: try original barcode
+        await searchProductByBarcode(barcode);
+      }
+    }
   };
 
   const saveScannedData = async () => {
@@ -616,21 +1333,31 @@ export default function ScannerPage() {
                 </div>
               )}
               
-              <div className="flex gap-2 mb-4">
+              <div className="flex flex-col gap-2 mb-4">
                 {!scanning ? (
                   <button
                     onClick={startCamera}
-                    className="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     📷 {cameraPermissionStatus === 'denied' ? 'Try Starting Camera (Check Settings First)' : 'Start Camera'}
                   </button>
                 ) : (
-                  <button
-                    onClick={stopCamera}
-                    className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition font-medium"
-                  >
-                    ⏹ Stop Camera
-                  </button>
+                  <>
+                    <button
+                      onClick={stopCamera}
+                      className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition font-medium"
+                    >
+                      ⏹ Stop Camera
+                    </button>
+                    
+                    <button
+                      onClick={captureImageFromCamera}
+                      disabled={processing}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      📸 {processing ? 'Processing...' : 'Capture & Scan Text'}
+                    </button>
+                  </>
                 )}
               </div>
             </div>

@@ -7,6 +7,7 @@ import connectDB from '../lib/db.js';
 import User from '../models/userModel.js';
 import { hashPassword } from '../lib/auth.js';
 
+
 async function initSuperAdmin() {
   try {
     await connectDB();

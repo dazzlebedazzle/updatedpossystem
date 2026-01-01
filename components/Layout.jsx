@@ -64,6 +64,7 @@ export default function Layout({ children, userRole, userName }) {
       { href: `${basePath}/users`, label: 'Users', icon: '👥', module: MODULES.USERS },
       { href: `${basePath}/permissions`, label: 'Permissions (CRUD)', icon: '🔐', module: MODULES.USERS },
       { href: `${basePath}/products`, label: 'Products', icon: '📦', module: MODULES.PRODUCTS },
+      { href: `${basePath}/scanner`, label: 'Scanner', icon: '📷', module: MODULES.PRODUCTS },
       { href: `${basePath}/pos`, label: 'POS', icon: '🛒', module: MODULES.SALES },
       { href: `${basePath}/sales`, label: userRole === 'user' ? 'My Sales' : 'Sales', icon: '💰', module: MODULES.SALES },
       { href: `${basePath}/customers`, label: 'Customers', icon: '👤', module: MODULES.CUSTOMERS },

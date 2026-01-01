@@ -84,7 +84,94 @@ export default function AdminPOS() {
 
   useEffect(() => {
     fetchProducts();
-  }, [fetchProducts]);
+    
+    // Listen for cart updates from scanner
+    const handleCartUpdate = (event) => {
+      const cartItem = event.detail;
+      console.log('Cart item received from scanner:', cartItem);
+      
+      // Find the product in the products list
+      const product = products.find(p => (p._id || p.id) === cartItem.productId);
+      if (product) {
+        // Add to cart using the addToCart function
+        const productObj = product.toObject ? product.toObject() : product;
+        setCart(prevCart => {
+          const existingItem = prevCart.find(item => item.productId === cartItem.productId);
+          if (existingItem) {
+            return prevCart.map(item =>
+              item.productId === cartItem.productId
+                ? { ...item, quantity: item.quantity + cartItem.quantity }
+                : item
+            );
+          } else {
+            return [...prevCart, {
+              productId: cartItem.productId,
+              name: cartItem.name,
+              price: cartItem.price,
+              quantity: cartItem.quantity,
+              unit: cartItem.unit,
+              profit: cartItem.profit || 0,
+              product_code: cartItem.product_code || '',
+              discount: cartItem.discount || 0
+            }];
+          }
+        });
+        toast.success(`Product added to cart: ${cartItem.name}`);
+      }
+    };
+    
+    window.addEventListener('cartUpdated', handleCartUpdate);
+    
+    // Also check localStorage for cart items on mount
+    const storedCart = localStorage.getItem('pos_cart');
+    if (storedCart) {
+      try {
+        const cartItems = JSON.parse(storedCart);
+        // Only add items that were added from scanner (have source: 'scanner')
+        const scannerItems = cartItems.filter(item => item.source === 'scanner');
+        if (scannerItems.length > 0) {
+          // Wait for products to load
+          setTimeout(() => {
+            scannerItems.forEach(cartItem => {
+              const product = products.find(p => (p._id || p.id) === cartItem.productId);
+              if (product) {
+                setCart(prevCart => {
+                  const existingItem = prevCart.find(item => item.productId === cartItem.productId);
+                  if (existingItem) {
+                    return prevCart.map(item =>
+                      item.productId === cartItem.productId
+                        ? { ...item, quantity: item.quantity + cartItem.quantity }
+                        : item
+                    );
+                  } else {
+                    return [...prevCart, {
+                      productId: cartItem.productId,
+                      name: cartItem.name,
+                      price: cartItem.price,
+                      quantity: cartItem.quantity,
+                      unit: cartItem.unit,
+                      profit: cartItem.profit || 0,
+                      product_code: cartItem.product_code || '',
+                      discount: cartItem.discount || 0
+                    }];
+                  }
+                });
+              }
+            });
+            // Clear scanner items from localStorage after adding to cart
+            const remainingItems = cartItems.filter(item => item.source !== 'scanner');
+            localStorage.setItem('pos_cart', JSON.stringify(remainingItems));
+          }, 1000);
+        }
+      } catch (error) {
+        console.error('Error reading cart from localStorage:', error);
+      }
+    }
+    
+    return () => {
+      window.removeEventListener('cartUpdated', handleCartUpdate);
+    };
+  }, [fetchProducts, products]);
 
   // Memoize unique products to avoid recalculating on every render
   const uniqueProducts = useMemo(() => {

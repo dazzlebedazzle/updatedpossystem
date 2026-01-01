@@ -1,7 +1,7 @@
-
 import { NextResponse } from 'next/server';
 import { productDB } from '@/lib/database';
 import { hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
+import { getSessionFromRequest } from '@/lib/auth-helper';
 
 // Mark this route as dynamic to prevent build-time analysis
 export const dynamic = 'force-dynamic';
@@ -10,19 +10,7 @@ export const runtime = 'nodejs';
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
-    const sessionCookie = request.cookies.get('session');
-    let session = null;
-    
-    if (sessionCookie) {
-      try {
-        session = JSON.parse(sessionCookie.value);
-      } catch {
-        return NextResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 }
-        );
-      }
-    }
+    const session = await getSessionFromRequest(request);
     
     if (!session) {
       return NextResponse.json(
@@ -60,23 +48,7 @@ export async function GET(request, { params }) {
 export async function PUT(request, { params }) {
   try {
     const { id } = await params;
-    const sessionCookie = request.cookies.get('session');
-    let session = null;
-    
-    if (sessionCookie) {
-      // Use safe JSON parsing with size limits
-      const parsed = safeJsonParse(sessionCookie.value, 10 * 1024); // 10KB max
-      if (parsed) {
-        session = sanitizeSession(parsed);
-      }
-      
-      if (!session) {
-        return NextResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 }
-        );
-      }
-    }
+    const session = await getSessionFromRequest(request);
     
     if (!session) {
       return NextResponse.json(
@@ -116,23 +88,7 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     const { id } = await params;
-    const sessionCookie = request.cookies.get('session');
-    let session = null;
-    
-    if (sessionCookie) {
-      // Use safe JSON parsing with size limits
-      const parsed = safeJsonParse(sessionCookie.value, 10 * 1024); // 10KB max
-      if (parsed) {
-        session = sanitizeSession(parsed);
-      }
-      
-      if (!session) {
-        return NextResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 }
-        );
-      }
-    }
+    const session = await getSessionFromRequest(request);
     
     if (!session) {
       return NextResponse.json(

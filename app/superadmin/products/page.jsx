@@ -266,11 +266,11 @@ export default function SuperAdminProducts() {
             <select
               value={selectedSupplier}
               onChange={(e) => setSelectedSupplier(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm sm:text-base bg-white"
+              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm sm:text-base bg-white text-gray-800"
             >
-              <option value="All">All Suppliers</option>
+              <option value="All" className="text-gray-800">All Suppliers</option>
               {suppliers.map((supplier) => (
-                <option key={supplier} value={supplier}>
+                <option key={supplier} value={supplier} className="text-gray-800">
                   {supplier}
                 </option>
               ))}
@@ -491,7 +491,7 @@ export default function SuperAdminProducts() {
                     value={formData.EAN_code}
                     onChange={(e) => setFormData({ ...formData, EAN_code: e.target.value })}
                     required
-                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm text-gray-800"
                   />
                 </div>
                 <div>
@@ -501,7 +501,7 @@ export default function SuperAdminProducts() {
                     value={formData.product_name}
                     onChange={(e) => setFormData({ ...formData, product_name: e.target.value })}
                     required
-                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm text-gray-800"
                   />
                 </div>
                 <div>
@@ -510,7 +510,7 @@ export default function SuperAdminProducts() {
                     type="text"
                     value={formData.unit}
                     onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm text-gray-800"
                   />
                 </div>
                 <div>
@@ -520,7 +520,7 @@ export default function SuperAdminProducts() {
                     step="0.01"
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm text-gray-800"
                   />
                 </div>
                 <div>
@@ -532,7 +532,7 @@ export default function SuperAdminProducts() {
                     value={formData.qty}
                     onChange={(e) => setFormData({ ...formData, qty: e.target.value })}
                     required
-                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm text-gray-800"
                   />
                 </div>
                 <div>
@@ -543,7 +543,7 @@ export default function SuperAdminProducts() {
                     min="0"
                     value={formData.qty_sold}
                     onChange={(e) => setFormData({ ...formData, qty_sold: e.target.value })}
-                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm text-gray-800"
                   />
                 </div>
                 <div>
@@ -551,11 +551,11 @@ export default function SuperAdminProducts() {
                   <select
                     value={formData.supplier}
                     onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
-                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm text-gray-800"
                   >
-                    <option value="">Select Supplier</option>
+                    <option value="" className="text-gray-800">Select Supplier</option>
                     {suppliers.map((supplier) => (
-                      <option key={supplier} value={supplier}>
+                      <option key={supplier} value={supplier} className="text-gray-800">
                         {supplier}
                       </option>
                     ))}
@@ -602,7 +602,7 @@ export default function SuperAdminProducts() {
                       value={formData.images}
                       onChange={(e) => setFormData({ ...formData, images: e.target.value })}
                       placeholder="Or enter image filename"
-                      className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm mt-2 placeholder:text-gray-800"
+                      className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm mt-2 text-gray-800 placeholder:text-gray-800"
                     />
                   )}
                 </div>
@@ -613,7 +613,7 @@ export default function SuperAdminProducts() {
                     value={formData.expiry_date}
                     onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
                     placeholder="MM/DD/YYYY"
-                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm placeholder:text-gray-800"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm text-gray-800 placeholder:text-gray-800"
                   />
                 </div>
                 <div>
@@ -623,7 +623,7 @@ export default function SuperAdminProducts() {
                     value={formData.date_arrival}
                     onChange={(e) => setFormData({ ...formData, date_arrival: e.target.value })}
                     placeholder="MM/DD/YYYY"
-                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm placeholder:text-gray-800"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm text-gray-800 placeholder:text-gray-800"
                   />
                 </div>
                 <div>
@@ -632,7 +632,7 @@ export default function SuperAdminProducts() {
                     type="text"
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm"
+                    className="block w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm text-gray-800"
                   />
                 </div>
                 <div className="flex justify-end space-x-2 pt-2">

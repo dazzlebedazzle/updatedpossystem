@@ -50,17 +50,31 @@ export default function ScannerPage() {
   };
 
   const openCameraSettings = () => {
-    // Try to open browser's camera settings page
     const userAgent = navigator.userAgent.toLowerCase();
     if (userAgent.includes('chrome') || userAgent.includes('edg')) {
-      // Chrome/Edge settings URL
-      window.open('chrome://settings/content/camera', '_blank');
-      toast.info('Camera settings opened. Look for "localhost:3000" in the "Customized behaviors" section and set it to "Allow"', { duration: 6000 });
+      try {
+        window.open('chrome://settings/content/camera', '_blank');
+        toast.info('Camera settings opened. Look for "localhost:3000" in the "Customized behaviors" section and set it to "Allow"', { duration: 6000 });
+      } catch (e) {
+        const instructions = [
+          '1. Click the lock icon (🔒) or camera icon (📷) in your browser address bar',
+          '2. Click "Camera" in the dropdown menu',
+          '3. Select "Allow" instead of "Block" or "Ask"',
+          '4. Refresh this page and try again'
+        ];
+        alert('HOW TO ENABLE CAMERA ACCESS:\n\n' + instructions.join('\n\n'));
+      }
     } else if (userAgent.includes('firefox')) {
-      // Firefox settings
       window.open('about:preferences#privacy', '_blank');
+      toast.info('Go to Permissions → Camera → Settings, find "localhost:3000" and set to "Allow"', { duration: 6000 });
     } else {
-      toast.info('Please go to your browser settings → Privacy → Camera');
+      const instructions = [
+        '1. Look for a lock or camera icon in your browser address bar',
+        '2. Click it and find "Camera" settings',
+        '3. Change it to "Allow"',
+        '4. Refresh this page'
+      ];
+      alert('HOW TO ENABLE CAMERA ACCESS:\n\n' + instructions.join('\n\n'));
     }
   };
 
@@ -160,32 +174,6 @@ export default function ScannerPage() {
     }
   };
 
-  const requestCameraPermissionDirectly = async () => {
-    // First, try to request permission directly - this will add the site to permissions list
-    try {
-      // Try with environment camera first (back camera)
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "environment" } 
-      });
-      // Stop the stream immediately - we just needed permission
-      stream.getTracks().forEach(track => track.stop());
-      return { success: true, deviceId: null };
-    } catch (err) {
-      // If environment camera fails, try any camera
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        throw err; // Re-throw permission errors
-      }
-      
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        stream.getTracks().forEach(track => track.stop());
-        return { success: true, deviceId: null };
-      } catch (e) {
-        throw e;
-      }
-    }
-  };
-
   const startCamera = async () => {
     // Check if camera API is available
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -193,79 +181,205 @@ export default function ScannerPage() {
       return;
     }
 
+    // Stop any existing camera instance
+    if (html5QrCodeRef.current) {
+      try {
+        await html5QrCodeRef.current.stop();
+        html5QrCodeRef.current.clear();
+        html5QrCodeRef.current = null;
+      } catch (e) {
+        console.log('Error stopping existing camera:', e);
+      }
+    }
+
     try {
       setScanning(true);
       
-      // First, try to request permission directly
-      // This will trigger the browser's permission prompt and add the site to the permissions list
+      // First, directly request camera permission to ensure it's granted
+      // This helps when permission is set to "Allow" but browser hasn't recognized it yet
+      let testStream = null;
       try {
-        await requestCameraPermissionDirectly();
-        setCameraPermissionStatus('granted');
-        toast.success('Camera permission granted! Starting scanner...', { duration: 2000 });
-      } catch (permErr) {
-        // Permission was denied - stop here and show instructions
-        setScanning(false);
-        setCameraPermissionStatus('denied');
-        
-        console.error('Camera permission denied. Error details:', {
-          name: permErr.name,
-          message: permErr.message,
-          fullError: permErr
+        console.log('Requesting camera permission directly...');
+        testStream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: "environment" } 
         });
-        
-        toast.error(
-          `Camera permission denied. Please click "Open Camera Settings" below and enable camera access for localhost:3000`,
-          { duration: 8000 }
-        );
-        return;
+        console.log('Camera permission granted directly');
+        // Stop the test stream immediately - we just needed permission
+        testStream.getTracks().forEach(track => track.stop());
+        setCameraPermissionStatus('granted');
+      } catch (permErr) {
+        // If direct permission fails, try user camera
+        if (permErr.name === 'NotAllowedError' || permErr.name === 'PermissionDeniedError') {
+          console.log('Environment camera permission denied, trying user camera...');
+          try {
+            testStream = await navigator.mediaDevices.getUserMedia({ 
+              video: { facingMode: "user" } 
+            });
+            console.log('User camera permission granted directly');
+            testStream.getTracks().forEach(track => track.stop());
+            setCameraPermissionStatus('granted');
+          } catch (userPermErr) {
+            // Both failed - permission is truly denied
+            throw permErr; // Throw the original error
+          }
+        } else {
+          throw permErr;
+        }
       }
-
-      // If we get here, permission was granted - now start html5-qrcode
+      
+      // Small delay to ensure permission state is updated
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Create new html5-qrcode instance
       const html5QrCode = new Html5Qrcode("reader");
       html5QrCodeRef.current = html5QrCode;
 
-      await html5QrCode.start(
-        { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0
-        },
-        (decodedText) => {
-          handleBarcodeScanned(decodedText);
-          stopCamera();
-        },
-        () => {
-          // Ignore scanning errors (these are normal during scanning)
+      // Try to start with environment camera (back camera)
+      try {
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0
+          },
+          (decodedText) => {
+            handleBarcodeScanned(decodedText);
+            stopCamera();
+          },
+          (errorMessage) => {
+            // Ignore scanning errors (these are normal during scanning)
+            // Only log if it's not a common scanning error
+            if (!errorMessage.includes('NotFoundException') && !errorMessage.includes('No MultiFormat')) {
+              console.log('Scanning:', errorMessage);
+            }
+          }
+        );
+        
+        // Successfully started
+        setCameraPermissionStatus('granted');
+        toast.success('Camera started successfully!', { duration: 2000 });
+        
+      } catch (envErr) {
+        // If environment camera fails, try user camera (front camera)
+        console.log('Environment camera failed, trying user camera:', envErr);
+        
+        try {
+          await html5QrCode.start(
+            { facingMode: "user" },
+            {
+              fps: 10,
+              qrbox: { width: 250, height: 250 },
+              aspectRatio: 1.0
+            },
+            (decodedText) => {
+              handleBarcodeScanned(decodedText);
+              stopCamera();
+            },
+            (errorMessage) => {
+              if (!errorMessage.includes('NotFoundException') && !errorMessage.includes('No MultiFormat')) {
+                console.log('Scanning:', errorMessage);
+              }
+            }
+          );
+          
+          setCameraPermissionStatus('granted');
+          toast.success('Camera started successfully!', { duration: 2000 });
+          
+        } catch (userErr) {
+          // Both failed, throw the error
+          throw userErr;
         }
-      );
+      }
       
     } catch (err) {
       console.error('Error starting camera:', err);
       setScanning(false);
       
+      // Clean up
+      if (html5QrCodeRef.current) {
+        try {
+          await html5QrCodeRef.current.stop().catch(() => {});
+          html5QrCodeRef.current.clear();
+          html5QrCodeRef.current = null;
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+      }
+      
       // Parse the error message to determine the issue
       const errorMessage = err.message || err.toString() || '';
       const errorName = err.name || '';
+      const errString = JSON.stringify(err).toLowerCase();
       
-      // Check for permission denied errors
+      // Check for permission denied errors - be very thorough
       if (errorName === 'NotAllowedError' || 
           errorName === 'PermissionDeniedError' ||
           errorMessage.includes('Permission denied') ||
           errorMessage.includes('NotAllowedError') ||
+          errorMessage.includes('Permission') ||
+          errString.includes('notallowederror') ||
+          errString.includes('permission denied') ||
           (errorMessage.includes('permission') && errorMessage.toLowerCase().includes('denied'))) {
         
         setCameraPermissionStatus('denied');
         
+        // Show a detailed alert with instructions
+        const userAgent = navigator.userAgent.toLowerCase();
+        let instructions = '';
+        
+        if (userAgent.includes('chrome') || userAgent.includes('edg')) {
+          instructions = `🔴 CAMERA ACCESS BLOCKED 🔴
+
+Your browser has BLOCKED camera access. Here's how to enable it:
+
+METHOD 1 (Easiest):
+1. Look at your browser address bar (where it says "localhost:3000")
+2. Click the lock icon (🔒) or camera icon (📷) on the LEFT side
+3. Find "Camera" in the dropdown
+4. Change it from "Block" to "Allow"
+5. Refresh this page (F5)
+
+METHOD 2 (If icon doesn't show):
+1. Copy this: chrome://settings/content/camera
+2. Paste it in a new tab and press Enter
+3. Scroll down to "Customized behaviors"
+4. Find "localhost:3000" or "127.0.0.1:3000"
+5. If it says "Not allowed", click it and select "Allow"
+6. If it's NOT listed, refresh this page, click "Start Camera", then go back to settings
+7. Refresh this page
+
+After enabling, refresh this page and try again!`;
+        } else {
+          instructions = `🔴 CAMERA ACCESS BLOCKED 🔴
+
+Your browser has BLOCKED camera access. Here's how to enable it:
+
+1. Look for a lock or camera icon in your browser address bar
+2. Click it and find "Camera" or "Permissions"
+3. Change camera access from "Block" to "Allow"
+4. Refresh this page (F5)
+5. Click "Start Camera" again
+
+If you can't find it:
+- Go to your browser Settings
+- Search for "Camera" or "Permissions"
+- Find "localhost:3000" and set camera to "Allow"
+- Refresh this page`;
+        }
+        
+        alert(instructions);
+        
         toast.error(
-          `Camera permission denied. Click "Open Camera Settings" button below to enable camera access for this site.`,
-          { duration: 8000 }
+          `Camera permission is BLOCKED. Please check the alert instructions above, enable camera access, and refresh the page.`,
+          { duration: 12000 }
         );
         
       } else if (errorName === 'NotFoundError' || 
                  errorName === 'DevicesNotFoundError' ||
                  errorMessage.includes('No camera') ||
-                 errorMessage.includes('device not found')) {
+                 errorMessage.includes('device not found') ||
+                 errorMessage.includes('NotFoundError')) {
         toast.error('No camera found. Please connect a camera device and try again.');
         
       } else if (errorName === 'NotReadableError' || 
@@ -276,7 +390,7 @@ export default function ScannerPage() {
         
       } else {
         console.error('Unknown camera error:', err);
-        toast.error('Failed to start camera. Please check your browser settings and try again.');
+        toast.error('Failed to start camera. Please check your browser settings and camera permissions.');
       }
     }
   };
@@ -344,17 +458,44 @@ export default function ScannerPage() {
     if (!imageFile) return;
 
     setProcessing(true);
+    let worker = null;
     try {
-      const worker = await createWorker('eng');
+      worker = await createWorker('eng');
       const { data: { text } } = await worker.recognize(imageFile);
+      
+      // Clean up worker
       await worker.terminate();
+      worker = null;
+
+      // Check if text was extracted
+      if (!text || text.trim().length === 0) {
+        toast.info('No text found in image');
+        return;
+      }
 
       // Parse the extracted text
       parseExtractedText(text);
       toast.success('Text extracted from image');
     } catch (error) {
-      console.error('Error extracting text:', error);
-      toast.error('Failed to extract text from image');
+      // Ensure worker is terminated even on error
+      if (worker) {
+        try {
+          await worker.terminate();
+        } catch (terminateError) {
+          console.log('Error terminating worker:', terminateError);
+        }
+      }
+      
+      // Log detailed error information
+      const errorMessage = error?.message || error?.toString() || 'Unknown error occurred';
+      const errorName = error?.name || 'Error';
+      console.error('Error extracting text:', {
+        name: errorName,
+        message: errorMessage,
+        error: error
+      });
+      
+      toast.error(`Failed to extract text: ${errorMessage}`);
     } finally {
       setProcessing(false);
     }
