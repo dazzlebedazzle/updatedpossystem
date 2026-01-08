@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo, useRef, useTransition } from 'react';
 import Layout from '@/components/Layout';
 import { toast } from '@/lib/toast';
 import Receipt from '@/components/Receipt';
@@ -32,6 +32,14 @@ export default function SuperAdminPOS() {
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [isPending, startTransition] = useTransition(); // For smooth category switching
+  
+  // Optimized category change handler
+  const handleCategoryChange = useCallback((category) => {
+    startTransition(() => {
+      setSelectedCategory(category);
+    });
+  }, []);
   const [showCheckoutPopup, setShowCheckoutPopup] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptData, setReceiptData] = useState(null);
@@ -44,6 +52,8 @@ export default function SuperAdminPOS() {
   });
 
   const INITIAL_BATCH_SIZE = 30; // Show first 30 products immediately
+  const hasFetchedRef = useRef(false); // Prevent multiple fetches
+  const isFetchingRef = useRef(false); // Prevent concurrent fetches
 
   const processProducts = (allProducts) => {
     // Remove duplicates using Set-based approach - more reliable
@@ -75,8 +85,24 @@ export default function SuperAdminPOS() {
     return uniqueProducts;
   };
 
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async (force = false) => {
+    // Prevent multiple concurrent fetches
+    if (isFetchingRef.current && !force) {
+      console.log('Fetch already in progress, skipping...');
+      return;
+    }
+    
+    // Prevent multiple initial fetches (unless forced)
+    if (hasFetchedRef.current && !force) {
+      console.log('Products already fetched, skipping...');
+      return;
+    }
+    
+    isFetchingRef.current = true;
+    hasFetchedRef.current = true;
+    
     try {
+      console.log('Fetching products...');
       const response = await fetch('/api/products');
       const data = await response.json();
       const allProducts = data.products || [];
@@ -110,50 +136,63 @@ export default function SuperAdminPOS() {
       console.error('Error fetching products:', error);
       setLoading(false);
       setInitialLoadComplete(true);
+      hasFetchedRef.current = false; // Allow retry on error
+    } finally {
+      isFetchingRef.current = false;
     }
   }, []);
 
+  // Fetch products on mount only - use ref to ensure it only runs once
   useEffect(() => {
-    fetchProducts();
-    
+    if (!hasFetchedRef.current) {
+      fetchProducts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array - only run once on mount
+
+  // Handle cart updates from scanner - separate effect that doesn't depend on products
+  useEffect(() => {
     // Listen for cart updates from scanner
     const handleCartUpdate = (event) => {
       const cartItem = event.detail;
       console.log('Cart item received from scanner:', cartItem);
       
-      // Find the product in the products list
-      const product = products.find(p => (p._id || p.id) === cartItem.productId);
-      if (product) {
-        // Add to cart using the addToCart function
-        const productObj = product.toObject ? product.toObject() : product;
-        setCart(prevCart => {
-          const existingItem = prevCart.find(item => item.productId === cartItem.productId);
-          if (existingItem) {
-            return prevCart.map(item =>
-              item.productId === cartItem.productId
-                ? { ...item, quantity: item.quantity + cartItem.quantity }
-                : item
-            );
-          } else {
-            return [...prevCart, {
-              productId: cartItem.productId,
-              name: cartItem.name,
-              price: cartItem.price,
-              quantity: cartItem.quantity,
-              unit: cartItem.unit,
-              profit: cartItem.profit || 0,
-              product_code: cartItem.product_code || '',
-              discount: cartItem.discount || 0
-            }];
-          }
-        });
-        toast.success(`Product added to cart: ${cartItem.name}`);
-      }
+      // Use the cartItem data directly (it already has all needed info)
+      setCart(prevCart => {
+        const existingItem = prevCart.find(item => item.productId === cartItem.productId);
+        if (existingItem) {
+          return prevCart.map(item =>
+            item.productId === cartItem.productId
+              ? { ...item, quantity: item.quantity + cartItem.quantity }
+              : item
+          );
+        } else {
+          return [...prevCart, {
+            productId: cartItem.productId,
+            name: cartItem.name,
+            price: cartItem.price,
+            quantity: cartItem.quantity,
+            unit: cartItem.unit,
+            profit: cartItem.profit || 0,
+            product_code: cartItem.product_code || '',
+            discount: cartItem.discount || 0
+          }];
+        }
+      });
+      toast.success(`Product added to cart: ${cartItem.name}`);
     };
     
     window.addEventListener('cartUpdated', handleCartUpdate);
     
-    // Also check localStorage for cart items on mount
+    return () => {
+      window.removeEventListener('cartUpdated', handleCartUpdate);
+    };
+  }, []); // Empty dependency array - only set up listener once
+
+  // Handle localStorage cart items - only run once after products are loaded
+  useEffect(() => {
+    if (!initialLoadComplete || products.length === 0) return;
+    
     const storedCart = localStorage.getItem('pos_cart');
     if (storedCart) {
       try {
@@ -161,48 +200,39 @@ export default function SuperAdminPOS() {
         // Only add items that were added from scanner (have source: 'scanner')
         const scannerItems = cartItems.filter(item => item.source === 'scanner');
         if (scannerItems.length > 0) {
-          // Wait for products to load
-          setTimeout(() => {
-            scannerItems.forEach(cartItem => {
-              const product = products.find(p => (p._id || p.id) === cartItem.productId);
-              if (product) {
-                setCart(prevCart => {
-                  const existingItem = prevCart.find(item => item.productId === cartItem.productId);
-                  if (existingItem) {
-                    return prevCart.map(item =>
-                      item.productId === cartItem.productId
-                        ? { ...item, quantity: item.quantity + cartItem.quantity }
-                        : item
-                    );
-                  } else {
-                    return [...prevCart, {
-                      productId: cartItem.productId,
-                      name: cartItem.name,
-                      price: cartItem.price,
-                      quantity: cartItem.quantity,
-                      unit: cartItem.unit,
-                      profit: cartItem.profit || 0,
-                      product_code: cartItem.product_code || '',
-                      discount: cartItem.discount || 0
-                    }];
-                  }
-                });
+          // Process items directly from cartItem data (no need to find in products)
+          scannerItems.forEach(cartItem => {
+            setCart(prevCart => {
+              const existingItem = prevCart.find(item => item.productId === cartItem.productId);
+              if (existingItem) {
+                return prevCart.map(item =>
+                  item.productId === cartItem.productId
+                    ? { ...item, quantity: item.quantity + cartItem.quantity }
+                    : item
+                );
+              } else {
+                return [...prevCart, {
+                  productId: cartItem.productId,
+                  name: cartItem.name,
+                  price: cartItem.price,
+                  quantity: cartItem.quantity,
+                  unit: cartItem.unit,
+                  profit: cartItem.profit || 0,
+                  product_code: cartItem.product_code || '',
+                  discount: cartItem.discount || 0
+                }];
               }
             });
-            // Clear scanner items from localStorage after adding to cart
-            const remainingItems = cartItems.filter(item => item.source !== 'scanner');
-            localStorage.setItem('pos_cart', JSON.stringify(remainingItems));
-          }, 1000);
+          });
+          // Clear scanner items from localStorage after adding to cart
+          const remainingItems = cartItems.filter(item => item.source !== 'scanner');
+          localStorage.setItem('pos_cart', JSON.stringify(remainingItems));
         }
       } catch (error) {
         console.error('Error reading cart from localStorage:', error);
       }
     }
-    
-    return () => {
-      window.removeEventListener('cartUpdated', handleCartUpdate);
-    };
-  }, [fetchProducts, products]);
+  }, [initialLoadComplete]); // Only run when initial load is complete
 
   // Memoize unique products to avoid recalculating on every render
   const uniqueProducts = useMemo(() => {
@@ -261,27 +291,51 @@ export default function SuperAdminPOS() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  // Pre-compute category filter for faster filtering
+  const categoryFilterMap = useMemo(() => {
+    const map = new Map();
+    uniqueProducts.forEach(product => {
+      if (!product) return;
+      const category = (product.category || 'general').toLowerCase();
+      if (!map.has(category)) {
+        map.set(category, []);
+      }
+      map.get(category).push(product);
+    });
+    return map;
+  }, [uniqueProducts]);
+
   const filteredProducts = useMemo(() => {
+    // Fast path: All products, no search
     if (!debouncedSearchTerm && selectedCategory === 'All') {
       return uniqueProducts;
     }
     
+    // Fast path: Category filter only (use pre-computed map)
+    if (!debouncedSearchTerm && selectedCategory !== 'All') {
+      const categoryLower = selectedCategory.toLowerCase();
+      return categoryFilterMap.get(categoryLower) || [];
+    }
+    
+    // Full filter: category + search
     const searchLower = debouncedSearchTerm.toLowerCase();
     const categoryLower = selectedCategory.toLowerCase();
     
-    return uniqueProducts.filter(product => {
+    // Start with category-filtered products if category is selected
+    const categoryProducts = selectedCategory === 'All' 
+      ? uniqueProducts 
+      : (categoryFilterMap.get(categoryLower) || []);
+    
+    // Then apply search filter
+    if (!debouncedSearchTerm) return categoryProducts;
+    
+    return categoryProducts.filter(product => {
       if (!product) return false;
-      
-      const matchesCategory = selectedCategory === 'All' || (product.category || 'general').toLowerCase() === categoryLower;
-      if (!matchesCategory) return false;
-      
-      if (!debouncedSearchTerm) return true;
-      
       const productName = (product.product_name || product.name || '').toLowerCase();
       const productEAN = (product.EAN_code || '').toString().toLowerCase();
       return productName.includes(searchLower) || productEAN.includes(searchLower);
     });
-  }, [uniqueProducts, debouncedSearchTerm, selectedCategory]);
+  }, [uniqueProducts, debouncedSearchTerm, selectedCategory, categoryFilterMap]);
 
   const addToCart = useCallback((product) => {
     const availableStock = (product.qty || 0) - (product.qty_sold || 0);
@@ -485,7 +539,7 @@ export default function SuperAdminPOS() {
         setShowReceipt(true);
         setCart([]);
         setCustomerData({ name: '', mobile: '', address: '', paymentType: '' });
-        fetchProducts();
+        fetchProducts(true); // Force refresh after checkout
       } else {
         const data = await response.json();
         toast.error(data.error || 'Checkout failed');
@@ -519,7 +573,8 @@ export default function SuperAdminPOS() {
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
         selectedCategory={selectedCategory}
-        setSelectedCategory={setSelectedCategory}
+        setSelectedCategory={handleCategoryChange}
+        isPending={isPending}
         categories={categories}
         showCheckoutPopup={showCheckoutPopup}
         setShowCheckoutPopup={setShowCheckoutPopup}
@@ -549,7 +604,8 @@ const ProductCard = memo(({ product, addToCart, getProductImage }) => {
   
   return (
     <div
-      className={`bg-white border border-gray-200 rounded-lg p-1.5 sm:p-2 md:p-2.5 shadow-sm transition touch-manipulation w-full max-w-full overflow-hidden ${
+      style={{ willChange: 'transform' }}
+      className={`bg-white border border-gray-200 rounded-lg p-1.5 sm:p-2 md:p-2.5 shadow-sm transition-all duration-150 touch-manipulation w-full max-w-full overflow-hidden ${
         availableStock > 0
           ? 'hover:shadow-md active:scale-[0.98] cursor-pointer'
           : 'opacity-50 cursor-not-allowed'
@@ -628,7 +684,8 @@ function POSContent({
   getCategoryIcon,
   showReceipt,
   setShowReceipt,
-  receiptData
+  receiptData,
+  isPending = false
 }) {
   const [showCartMobile, setShowCartMobile] = useState(false);
 
@@ -692,11 +749,12 @@ function POSContent({
                     <button
                       key={categoryName}
                       onClick={() => setSelectedCategory(categoryName)}
-                      className={`flex flex-col items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-lg md:rounded-xl whitespace-nowrap transition-all min-w-[55px] sm:min-w-[60px] md:min-w-[70px] flex-shrink-0 touch-manipulation ${
+                      style={{ willChange: 'transform' }} // Optimize for animations
+                      className={`flex flex-col items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 rounded-lg md:rounded-xl whitespace-nowrap transition-all duration-150 min-w-[55px] sm:min-w-[60px] md:min-w-[70px] flex-shrink-0 touch-manipulation ${
                         isSelected
                           ? 'bg-purple-600 text-white shadow-lg scale-105'
                           : 'bg-amber-50 text-gray-800 hover:bg-amber-100 active:bg-amber-200 shadow-sm border border-amber-200'
-                      }`}
+                      } ${isPending && isSelected ? 'opacity-75' : ''}`}
                     >
                       <div className={`w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center overflow-hidden relative ${
                         isSelected ? 'bg-white/20' : 'bg-white'
@@ -753,7 +811,10 @@ function POSContent({
             ) : filteredProducts.length === 0 ? (
               <div className="text-center py-8 sm:py-12 text-gray-800 text-xs sm:text-sm md:text-base">No products found</div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-2 sm:gap-2.5 md:gap-3 lg:gap-4 w-full max-w-full">
+              <div 
+                className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-2 sm:gap-2.5 md:gap-3 lg:gap-4 w-full max-w-full ${isPending ? 'opacity-75' : 'opacity-100'} transition-opacity duration-150`}
+                style={{ willChange: 'contents' }}
+              >
                 {filteredProducts.map((product) => (
                   <ProductCard
                     key={product._id || product.id}

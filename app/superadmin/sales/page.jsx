@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Layout from '@/components/Layout';
 import { PageLoader } from '@/components/Loader';
 import Pagination from '@/components/Pagination';
@@ -8,48 +8,79 @@ import { getTodayIST } from '@/lib/date-utils';
 
 export default function SuperAdminSales() {
   const [sales, setSales] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   useEffect(() => {
     fetchSales();
+    fetchUsers();
     // Set default date range to today (IST)
     const today = getTodayIST();
     setStartDate(today);
     setEndDate(today);
   }, []);
 
-  // Filter sales by date range
+  const fetchUsers = useCallback(async () => {
+    try {
+      const response = await fetch('/api/users');
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data.users || []);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  }, []);
+
+  // Filter sales by date range and user
   const filteredSales = useMemo(() => {
-    if (!startDate && !endDate) {
-      return sales;
+    let filtered = sales;
+
+    // Filter by user
+    if (selectedUserId !== 'All') {
+      filtered = filtered.filter(sale => {
+        const saleUserId = sale.userId?.toString();
+        return saleUserId === selectedUserId;
+      });
     }
 
-    return sales.filter(sale => {
-      const saleDate = new Date(sale.createdAt || sale.date);
-      saleDate.setHours(0, 0, 0, 0);
+    // Filter by date range
+    if (startDate || endDate) {
+      filtered = filtered.filter(sale => {
+        const saleDate = new Date(sale.createdAt || sale.date);
+        saleDate.setHours(0, 0, 0, 0);
 
-      if (startDate && endDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        return saleDate >= start && saleDate <= end;
-      } else if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        return saleDate >= start;
-      } else if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        return saleDate <= end;
-      }
-      return true;
-    });
-  }, [sales, startDate, endDate]);
+        if (startDate && endDate) {
+          const start = new Date(startDate);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          return saleDate >= start && saleDate <= end;
+        } else if (startDate) {
+          const start = new Date(startDate);
+          start.setHours(0, 0, 0, 0);
+          return saleDate >= start;
+        } else if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          return saleDate <= end;
+        }
+        return true;
+      });
+    }
+
+    return filtered;
+  }, [sales, startDate, endDate, selectedUserId]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedUserId, startDate, endDate]);
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredSales.length / itemsPerPage);
@@ -59,10 +90,6 @@ export default function SuperAdminSales() {
     return filteredSales.slice(startIndex, endIndex);
   }, [filteredSales, currentPage, itemsPerPage]);
 
-  // Reset to page 1 when sales change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filteredSales.length]);
 
   const fetchSales = async () => {
     try {
@@ -81,9 +108,9 @@ export default function SuperAdminSales() {
       <div className="px-2 sm:px-4 py-4 sm:py-6">
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">All Sales</h1>
 
-        {/* Date Filters */}
+        {/* Filters */}
         <div className="bg-white shadow rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-800 mb-1">
                 From Date
@@ -92,7 +119,7 @@ export default function SuperAdminSales() {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm"
               />
             </div>
             <div>
@@ -103,8 +130,28 @@ export default function SuperAdminSales() {
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-800 mb-1">
+                Filter by User
+              </label>
+              <select
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm bg-white text-gray-800"
+              >
+                <option value="All">All Users</option>
+                {users.map((user) => {
+                  const userObj = user.toObject ? user.toObject() : user;
+                  return (
+                    <option key={userObj._id || userObj.id} value={userObj._id || userObj.id} className="text-gray-800">
+                      {userObj.name || userObj.email || 'Unknown User'}
+                    </option>
+                  );
+                })}
+              </select>
             </div>
             <div className="flex items-end">
               <button
@@ -112,8 +159,9 @@ export default function SuperAdminSales() {
                   const today = getTodayIST();
                   setStartDate(today);
                   setEndDate(today);
+                  setSelectedUserId('All');
                 }}
-                className="w-full bg-white text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-50 font-medium border border-gray-200"
+                className="w-full bg-gray-100 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-200 font-medium border border-gray-200 transition-colors text-sm"
               >
                 Clear Filters
               </button>
@@ -133,23 +181,43 @@ export default function SuperAdminSales() {
                     <tr>
                       <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">ID</th>
                       <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Date</th>
+                      <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Shop Name</th>
+                      <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">User</th>
                       <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Items</th>
                       <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Total</th>
                       <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Payment</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {paginatedSales.map((sale) => (
-                    <tr key={sale.id}>
-                      <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{sale.id}</td>
-                      <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                        {new Date(sale.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-800">{sale.items?.length || 0}</td>
-                      <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-800">₹{sale.total?.toFixed(2)}</td>
-                      <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-800">{sale.paymentMethod}</td>
-                    </tr>
-                  ))}
+                    {paginatedSales.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" className="px-4 lg:px-6 py-8 text-center text-sm text-gray-500">
+                          No sales found for the selected filters
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedSales.map((sale) => (
+                        <tr key={sale.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{sale.id}</td>
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                            {new Date(sale.createdAt).toLocaleDateString('en-IN', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
+                          </td>
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {sale.shopName || 'N/A'}
+                          </td>
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                            {sale.userName || sale.userEmail || 'N/A'}
+                          </td>
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-800">{sale.items?.length || 0}</td>
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">₹{sale.total?.toFixed(2)}</td>
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-800 capitalize">{sale.paymentMethod}</td>
+                        </tr>
+                      ))
+                    )}
                 </tbody>
               </table>
             </div>
@@ -157,34 +225,54 @@ export default function SuperAdminSales() {
 
             {/* Mobile Card View */}
             <div className="md:hidden space-y-3 mb-4">
-              {paginatedSales.map((sale) => (
-                <div key={sale.id} className="bg-white shadow rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">Sale ID</p>
-                      <p className="text-base font-semibold text-gray-900">{sale.id}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-gray-800">Total</p>
-                      <p className="text-base font-semibold text-indigo-600">₹{sale.total?.toFixed(2)}</p>
-                    </div>
-                  </div>
-                  <div className="space-y-1.5 pt-2 border-t border-gray-100">
-                    <div className="flex justify-between">
-                      <span className="text-xs text-gray-600">Date:</span>
-                      <span className="text-xs text-gray-800">{new Date(sale.createdAt).toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs text-gray-600">Items:</span>
-                      <span className="text-xs text-gray-800">{sale.items?.length || 0}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs text-gray-600">Payment:</span>
-                      <span className="text-xs text-gray-800 capitalize">{sale.paymentMethod}</span>
-                    </div>
-                  </div>
+              {paginatedSales.length === 0 ? (
+                <div className="bg-white shadow rounded-lg p-4 text-center">
+                  <p className="text-sm text-gray-500">No sales found for the selected filters</p>
                 </div>
-              ))}
+              ) : (
+                paginatedSales.map((sale) => (
+                  <div key={sale.id} className="bg-white shadow rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">Sale ID</p>
+                        <p className="text-base font-semibold text-gray-900">{sale.id}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gray-800">Total</p>
+                        <p className="text-base font-semibold text-indigo-600">₹{sale.total?.toFixed(2)}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 pt-2 border-t border-gray-100">
+                      <div className="flex justify-between">
+                        <span className="text-xs text-gray-600">Date:</span>
+                        <span className="text-xs text-gray-800">
+                          {new Date(sale.createdAt).toLocaleDateString('en-IN', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-xs text-gray-600">Shop:</span>
+                        <span className="text-xs font-medium text-gray-900">{sale.shopName || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-xs text-gray-600">User:</span>
+                        <span className="text-xs text-gray-800">{sale.userName || sale.userEmail || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-xs text-gray-600">Items:</span>
+                        <span className="text-xs text-gray-800">{sale.items?.length || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-xs text-gray-600">Payment:</span>
+                        <span className="text-xs text-gray-800 capitalize">{sale.paymentMethod}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
           <Pagination

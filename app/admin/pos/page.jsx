@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, useTransition } from 'react';
 import Layout, { useSidebar } from '@/components/Layout';
 import { toast } from '@/lib/toast';
 import Receipt from '@/components/Receipt';
@@ -31,6 +31,14 @@ export default function AdminPOS() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [isPending, startTransition] = useTransition();
+  
+  // Optimized category change handler
+  const handleCategoryChange = useCallback((category) => {
+    startTransition(() => {
+      setSelectedCategory(category);
+    });
+  }, []);
   const [showCheckoutPopup, setShowCheckoutPopup] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptData, setReceiptData] = useState(null);
@@ -42,8 +50,27 @@ export default function AdminPOS() {
     paymentType: ''
   });
 
-  const fetchProducts = useCallback(async () => {
+  const hasFetchedRef = useRef(false); // Prevent multiple fetches
+  const isFetchingRef = useRef(false); // Prevent concurrent fetches
+
+  const fetchProducts = useCallback(async (force = false) => {
+    // Prevent multiple concurrent fetches
+    if (isFetchingRef.current && !force) {
+      console.log('Fetch already in progress, skipping...');
+      return;
+    }
+    
+    // Prevent multiple initial fetches (unless forced)
+    if (hasFetchedRef.current && !force) {
+      console.log('Products already fetched, skipping...');
+      return;
+    }
+    
+    isFetchingRef.current = true;
+    hasFetchedRef.current = true;
+    
     try {
+      console.log('Fetching products...');
       const response = await fetch('/api/products');
       const data = await response.json();
       const allProducts = data.products || [];
@@ -77,52 +104,65 @@ export default function AdminPOS() {
       setProducts(uniqueProducts);
     } catch (error) {
       console.error('Error fetching products:', error);
+      hasFetchedRef.current = false; // Allow retry on error
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
   }, []);
 
+  // Fetch products on mount only - use ref to ensure it only runs once
   useEffect(() => {
-    fetchProducts();
-    
+    if (!hasFetchedRef.current) {
+      fetchProducts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array - only run once on mount
+  }, [fetchProducts]);
+
+  // Handle cart updates from scanner - separate effect that doesn't depend on products
+  useEffect(() => {
     // Listen for cart updates from scanner
     const handleCartUpdate = (event) => {
       const cartItem = event.detail;
       console.log('Cart item received from scanner:', cartItem);
       
-      // Find the product in the products list
-      const product = products.find(p => (p._id || p.id) === cartItem.productId);
-      if (product) {
-        // Add to cart using the addToCart function
-        const productObj = product.toObject ? product.toObject() : product;
-        setCart(prevCart => {
-          const existingItem = prevCart.find(item => item.productId === cartItem.productId);
-          if (existingItem) {
-            return prevCart.map(item =>
-              item.productId === cartItem.productId
-                ? { ...item, quantity: item.quantity + cartItem.quantity }
-                : item
-            );
-          } else {
-            return [...prevCart, {
-              productId: cartItem.productId,
-              name: cartItem.name,
-              price: cartItem.price,
-              quantity: cartItem.quantity,
-              unit: cartItem.unit,
-              profit: cartItem.profit || 0,
-              product_code: cartItem.product_code || '',
-              discount: cartItem.discount || 0
-            }];
-          }
-        });
-        toast.success(`Product added to cart: ${cartItem.name}`);
-      }
+      // Use the cartItem data directly (it already has all needed info)
+      setCart(prevCart => {
+        const existingItem = prevCart.find(item => item.productId === cartItem.productId);
+        if (existingItem) {
+          return prevCart.map(item =>
+            item.productId === cartItem.productId
+              ? { ...item, quantity: item.quantity + cartItem.quantity }
+              : item
+          );
+        } else {
+          return [...prevCart, {
+            productId: cartItem.productId,
+            name: cartItem.name,
+            price: cartItem.price,
+            quantity: cartItem.quantity,
+            unit: cartItem.unit,
+            profit: cartItem.profit || 0,
+            product_code: cartItem.product_code || '',
+            discount: cartItem.discount || 0
+          }];
+        }
+      });
+      toast.success(`Product added to cart: ${cartItem.name}`);
     };
     
     window.addEventListener('cartUpdated', handleCartUpdate);
     
-    // Also check localStorage for cart items on mount
+    return () => {
+      window.removeEventListener('cartUpdated', handleCartUpdate);
+    };
+  }, []); // Empty dependency array - only set up listener once
+
+  // Handle localStorage cart items - only run once after products are loaded
+  useEffect(() => {
+    if (loading || products.length === 0) return;
+    
     const storedCart = localStorage.getItem('pos_cart');
     if (storedCart) {
       try {
@@ -130,48 +170,39 @@ export default function AdminPOS() {
         // Only add items that were added from scanner (have source: 'scanner')
         const scannerItems = cartItems.filter(item => item.source === 'scanner');
         if (scannerItems.length > 0) {
-          // Wait for products to load
-          setTimeout(() => {
-            scannerItems.forEach(cartItem => {
-              const product = products.find(p => (p._id || p.id) === cartItem.productId);
-              if (product) {
-                setCart(prevCart => {
-                  const existingItem = prevCart.find(item => item.productId === cartItem.productId);
-                  if (existingItem) {
-                    return prevCart.map(item =>
-                      item.productId === cartItem.productId
-                        ? { ...item, quantity: item.quantity + cartItem.quantity }
-                        : item
-                    );
-                  } else {
-                    return [...prevCart, {
-                      productId: cartItem.productId,
-                      name: cartItem.name,
-                      price: cartItem.price,
-                      quantity: cartItem.quantity,
-                      unit: cartItem.unit,
-                      profit: cartItem.profit || 0,
-                      product_code: cartItem.product_code || '',
-                      discount: cartItem.discount || 0
-                    }];
-                  }
-                });
+          // Process items directly from cartItem data (no need to find in products)
+          scannerItems.forEach(cartItem => {
+            setCart(prevCart => {
+              const existingItem = prevCart.find(item => item.productId === cartItem.productId);
+              if (existingItem) {
+                return prevCart.map(item =>
+                  item.productId === cartItem.productId
+                    ? { ...item, quantity: item.quantity + cartItem.quantity }
+                    : item
+                );
+              } else {
+                return [...prevCart, {
+                  productId: cartItem.productId,
+                  name: cartItem.name,
+                  price: cartItem.price,
+                  quantity: cartItem.quantity,
+                  unit: cartItem.unit,
+                  profit: cartItem.profit || 0,
+                  product_code: cartItem.product_code || '',
+                  discount: cartItem.discount || 0
+                }];
               }
             });
-            // Clear scanner items from localStorage after adding to cart
-            const remainingItems = cartItems.filter(item => item.source !== 'scanner');
-            localStorage.setItem('pos_cart', JSON.stringify(remainingItems));
-          }, 1000);
+          });
+          // Clear scanner items from localStorage after adding to cart
+          const remainingItems = cartItems.filter(item => item.source !== 'scanner');
+          localStorage.setItem('pos_cart', JSON.stringify(remainingItems));
         }
       } catch (error) {
         console.error('Error reading cart from localStorage:', error);
       }
     }
-    
-    return () => {
-      window.removeEventListener('cartUpdated', handleCartUpdate);
-    };
-  }, [fetchProducts, products]);
+  }, [loading, products.length]); // Only run when loading is complete and products are loaded
 
   // Memoize unique products to avoid recalculating on every render
   const uniqueProducts = useMemo(() => {
@@ -230,27 +261,51 @@ export default function AdminPOS() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  // Pre-compute category filter for faster filtering
+  const categoryFilterMap = useMemo(() => {
+    const map = new Map();
+    uniqueProducts.forEach(product => {
+      if (!product) return;
+      const category = (product.category || 'general').toLowerCase();
+      if (!map.has(category)) {
+        map.set(category, []);
+      }
+      map.get(category).push(product);
+    });
+    return map;
+  }, [uniqueProducts]);
+
   const filteredProducts = useMemo(() => {
+    // Fast path: All products, no search
     if (!debouncedSearchTerm && selectedCategory === 'All') {
       return uniqueProducts;
     }
     
+    // Fast path: Category filter only (use pre-computed map)
+    if (!debouncedSearchTerm && selectedCategory !== 'All') {
+      const categoryLower = selectedCategory.toLowerCase();
+      return categoryFilterMap.get(categoryLower) || [];
+    }
+    
+    // Full filter: category + search
     const searchLower = debouncedSearchTerm.toLowerCase();
     const categoryLower = selectedCategory.toLowerCase();
     
-    return uniqueProducts.filter(product => {
+    // Start with category-filtered products if category is selected
+    const categoryProducts = selectedCategory === 'All' 
+      ? uniqueProducts 
+      : (categoryFilterMap.get(categoryLower) || []);
+    
+    // Then apply search filter
+    if (!debouncedSearchTerm) return categoryProducts;
+    
+    return categoryProducts.filter(product => {
       if (!product) return false;
-      
-      const matchesCategory = selectedCategory === 'All' || (product.category || 'general').toLowerCase() === categoryLower;
-      if (!matchesCategory) return false;
-      
-      if (!debouncedSearchTerm) return true;
-      
       const productName = (product.product_name || product.name || '').toLowerCase();
       const productEAN = (product.EAN_code || '').toString().toLowerCase();
       return productName.includes(searchLower) || productEAN.includes(searchLower);
     });
-  }, [uniqueProducts, debouncedSearchTerm, selectedCategory]);
+  }, [uniqueProducts, debouncedSearchTerm, selectedCategory, categoryFilterMap]);
 
   const addToCart = useCallback((product) => {
     const availableStock = (product.qty || 0) - (product.qty_sold || 0);
@@ -454,7 +509,7 @@ export default function AdminPOS() {
         setShowReceipt(true);
         setCart([]);
         setCustomerData({ name: '', mobile: '', address: '', paymentType: '' });
-        fetchProducts();
+        fetchProducts(true); // Force refresh after checkout
       } else {
         const data = await response.json();
         toast.error(data.error || 'Checkout failed');
@@ -487,7 +542,8 @@ export default function AdminPOS() {
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
         selectedCategory={selectedCategory}
-        setSelectedCategory={setSelectedCategory}
+        setSelectedCategory={handleCategoryChange}
+        isPending={isPending}
         categories={categories}
         showCheckoutPopup={showCheckoutPopup}
         setShowCheckoutPopup={setShowCheckoutPopup}
@@ -534,7 +590,8 @@ function POSContent({
   getCategoryIcon,
   showReceipt,
   setShowReceipt,
-  receiptData
+  receiptData,
+  isPending = false
 }) {
   const { sidebarWidth } = useSidebar();
   const [showCartMobile, setShowCartMobile] = useState(false);
@@ -593,11 +650,12 @@ function POSContent({
                     <button
                       key={categoryName}
                       onClick={() => setSelectedCategory(categoryName)}
-                      className={`flex flex-col items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl whitespace-nowrap transition-all min-w-[60px] sm:min-w-[66px] flex-shrink-0 touch-manipulation ${
+                      style={{ willChange: 'transform' }}
+                      className={`flex flex-col items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl whitespace-nowrap transition-all duration-150 min-w-[60px] sm:min-w-[66px] flex-shrink-0 touch-manipulation ${
                         isSelected
                           ? 'bg-purple-600 text-white shadow-lg'
                           : 'bg-amber-50 text-gray-800 hover:bg-amber-100 active:bg-amber-200 shadow-sm border border-amber-200'
-                      }`}
+                      } ${isPending && isSelected ? 'opacity-75' : ''}`}
                     >
                       <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center overflow-hidden relative ${
                         isSelected ? 'bg-white/20' : 'bg-white'
@@ -654,7 +712,10 @@ function POSContent({
             ) : filteredProducts.length === 0 ? (
               <div className="text-center py-8 sm:py-12 text-gray-800 text-sm sm:text-base">No products found</div>
             ) : (
-              <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
+              <div 
+                className={`grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4 ${isPending ? 'opacity-75' : 'opacity-100'} transition-opacity duration-150`}
+                style={{ willChange: 'contents' }}
+              >
                 {filteredProducts.map((product) => {
                   const productId = product._id || product.id;
                   const availableStock = (product.qty || 0) - (product.qty_sold || 0);

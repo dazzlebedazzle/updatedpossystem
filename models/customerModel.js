@@ -40,6 +40,12 @@ customerSchema.pre('save', function(next) {
   next();
 });
 
+// Add indexes for performance optimization
+customerSchema.index({ phone: 1 }); // For phone lookups
+customerSchema.index({ name: 'text' }); // For text search
+customerSchema.index({ createdAt: -1 }); // For sorting by date
+customerSchema.index({ isActive: 1 }); // For filtering active customers
+
 const Customer = mongoose.models.Customer || mongoose.model('Customer', customerSchema);
 
 export default Customer;

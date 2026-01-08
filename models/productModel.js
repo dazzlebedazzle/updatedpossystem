@@ -56,6 +56,12 @@ const productSchema = new mongoose.Schema({
     default: 'general',
     trim: true
   },
+  // Shop assignment (userId of the shop)
+  shopId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -70,6 +76,14 @@ productSchema.pre('save', function(next) {
   this.updatedAt = Date.now();
   next();
 });
+
+// Add indexes for performance optimization
+productSchema.index({ EAN_code: 1 }); // Already unique, but explicit index helps
+productSchema.index({ category: 1 }); // For category filtering
+productSchema.index({ supplier: 1 }); // For supplier filtering
+productSchema.index({ product_name: 'text' }); // For text search
+productSchema.index({ shopId: 1 }); // For shop filtering
+productSchema.index({ createdAt: -1 }); // For sorting by date
 
 const Product = mongoose.models.Product || mongoose.model('Product', productSchema);
 

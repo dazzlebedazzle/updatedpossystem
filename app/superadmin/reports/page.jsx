@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Layout from '@/components/Layout';
 import jsPDF from 'jspdf';
 import { PageLoader } from '@/components/Loader';
@@ -9,18 +9,33 @@ import { getTodayIST, isTodayIST } from '@/lib/date-utils';
 
 export default function SuperAdminReports() {
   const [sales, setSales] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   useEffect(() => {
     fetchReports();
+    fetchUsers();
     // Set default date range to today (IST)
     const today = getTodayIST();
     setStartDate(today);
     setEndDate(today);
+  }, []);
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      const response = await fetch('/api/users');
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data.users || []);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
   }, []);
 
   // Fetch sales data from database via API (saleModel)
@@ -38,34 +53,50 @@ export default function SuperAdminReports() {
     }
   };
 
-  // Filter sales by date range
+  // Filter sales by date range and user
   const filteredSales = useMemo(() => {
-    if (!startDate && !endDate) {
-      return sales;
+    let filtered = sales;
+
+    // Filter by user
+    if (selectedUserId !== 'All') {
+      filtered = filtered.filter(sale => {
+        const saleUserId = sale.userId?.toString();
+        return saleUserId === selectedUserId;
+      });
     }
 
-    return sales.filter(sale => {
-      const saleDate = new Date(sale.createdAt || sale.date);
-      saleDate.setHours(0, 0, 0, 0);
+    // Filter by date range
+    if (startDate || endDate) {
+      filtered = filtered.filter(sale => {
+        const saleDate = new Date(sale.createdAt || sale.date);
+        saleDate.setHours(0, 0, 0, 0);
 
-      if (startDate && endDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        return saleDate >= start && saleDate <= end;
-      } else if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        return saleDate >= start;
-      } else if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        return saleDate <= end;
-      }
-      return true;
-    });
-  }, [sales, startDate, endDate]);
+        if (startDate && endDate) {
+          const start = new Date(startDate);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          return saleDate >= start && saleDate <= end;
+        } else if (startDate) {
+          const start = new Date(startDate);
+          start.setHours(0, 0, 0, 0);
+          return saleDate >= start;
+        } else if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          return saleDate <= end;
+        }
+        return true;
+      });
+    }
+
+    return filtered;
+  }, [sales, startDate, endDate, selectedUserId]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedUserId, startDate, endDate]);
 
   // Calculate summary statistics
   const summary = useMemo(() => {
@@ -111,14 +142,10 @@ export default function SuperAdminReports() {
     return filteredSales.slice(startIndex, endIndex);
   }, [filteredSales, currentPage, itemsPerPage]);
 
-  // Reset to page 1 when filtered sales change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filteredSales.length]);
 
   // Download CSV
   const downloadCSV = () => {
-    const headers = ['Sale ID', 'Date', 'Customer Name', 'Customer Mobile', 'Items', 'Total', 'Payment Method'];
+    const headers = ['Sale ID', 'Date', 'Shop Name', 'User', 'Customer Name', 'Customer Mobile', 'Items', 'Total', 'Payment Method'];
     const rows = filteredSales.map(sale => {
       const date = new Date(sale.createdAt || sale.date).toLocaleDateString();
       const itemsCount = sale.items?.length || 0;
@@ -127,6 +154,8 @@ export default function SuperAdminReports() {
       return [
         sale._id || sale.id || '',
         date,
+        sale.shopName || 'N/A',
+        sale.userName || sale.userEmail || 'N/A',
         sale.customerName || '',
         sale.customerMobile || '',
         itemsList || itemsCount.toString(),
@@ -199,8 +228,8 @@ export default function SuperAdminReports() {
     // Table Headers
     doc.setFontSize(9);
     doc.setFont(undefined, 'bold');
-    const headers = ['ID', 'Date', 'Customer', 'Items', 'Total', 'Payment'];
-    const colWidths = [25, 30, 45, 30, 25, 30];
+    const headers = ['ID', 'Date', 'Shop', 'User', 'Customer', 'Items', 'Total', 'Payment'];
+    const colWidths = [20, 25, 30, 30, 35, 25, 25, 25];
     let xPosition = margin;
     
     headers.forEach((header, index) => {
@@ -224,22 +253,28 @@ export default function SuperAdminReports() {
 
       const saleId = (sale._id || sale.id || '').toString().substring(0, 8);
       const date = new Date(sale.createdAt || sale.date).toLocaleDateString();
-      const customer = (sale.customerName || 'N/A').substring(0, 20);
+      const shop = (sale.shopName || 'N/A').substring(0, 15);
+      const user = (sale.userName || sale.userEmail || 'N/A').substring(0, 15);
+      const customer = (sale.customerName || 'N/A').substring(0, 18);
       const itemsCount = sale.items?.length || 0;
       const total = `₹${(sale.total || 0).toFixed(2)}`;
-      const payment = (sale.paymentMethod || '').substring(0, 10);
+      const payment = (sale.paymentMethod || '').substring(0, 8);
 
       xPosition = margin;
       doc.text(saleId, xPosition, yPosition);
       xPosition += colWidths[0];
       doc.text(date, xPosition, yPosition);
       xPosition += colWidths[1];
-      doc.text(customer, xPosition, yPosition);
+      doc.text(shop, xPosition, yPosition);
       xPosition += colWidths[2];
-      doc.text(itemsCount.toString(), xPosition, yPosition);
+      doc.text(user, xPosition, yPosition);
       xPosition += colWidths[3];
-      doc.text(total, xPosition, yPosition);
+      doc.text(customer, xPosition, yPosition);
       xPosition += colWidths[4];
+      doc.text(itemsCount.toString(), xPosition, yPosition);
+      xPosition += colWidths[5];
+      doc.text(total, xPosition, yPosition);
+      xPosition += colWidths[6];
       doc.text(payment, xPosition, yPosition);
 
       yPosition += lineHeight;
@@ -294,9 +329,9 @@ export default function SuperAdminReports() {
           </div>
         </div>
 
-        {/* Date Filters */}
+        {/* Filters */}
         <div className="bg-white shadow rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-800 mb-1">
                 From Date
@@ -305,7 +340,7 @@ export default function SuperAdminReports() {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm"
               />
             </div>
             <div>
@@ -316,16 +351,38 @@ export default function SuperAdminReports() {
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-800 mb-1">
+                Filter by User
+              </label>
+              <select
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm bg-white text-gray-800"
+              >
+                <option value="All">All Users</option>
+                {users.map((user) => {
+                  const userObj = user.toObject ? user.toObject() : user;
+                  return (
+                    <option key={userObj._id || userObj.id} value={userObj._id || userObj.id} className="text-gray-800">
+                      {userObj.name || userObj.email || 'Unknown User'}
+                    </option>
+                  );
+                })}
+              </select>
             </div>
             <div className="flex items-end">
               <button
                 onClick={() => {
-                  setStartDate('');
-                  setEndDate('');
+                  const today = getTodayIST();
+                  setStartDate(today);
+                  setEndDate(today);
+                  setSelectedUserId('All');
                 }}
-                className="w-full bg-white text-gray-800 px-4 py-2 rounded-lg hover:bg-white font-medium"
+                className="w-full bg-gray-100 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-200 font-medium border border-gray-200 transition-colors text-sm"
               >
                 Clear Filters
               </button>
@@ -436,6 +493,8 @@ export default function SuperAdminReports() {
                     <tr>
                       <th className="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Sale ID</th>
                       <th className="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Date</th>
+                      <th className="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Shop Name</th>
+                      <th className="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">User</th>
                       <th className="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Customer Name</th>
                       <th className="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Customer Mobile</th>
                       <th className="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Items</th>
@@ -444,37 +503,55 @@ export default function SuperAdminReports() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {paginatedSales.map((sale) => (
-                      <tr key={sale._id || sale.id || `sale-${Math.random()}`}>
-                        <td className="px-4 xl:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {(sale._id || sale.id || '').toString().substring(0, 8)}
-                        </td>
-                        <td className="px-4 xl:px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                          {new Date(sale.createdAt || sale.date).toLocaleDateString()}
-                        </td>
-                        <td className="px-4 xl:px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                          {sale.customerName || 'N/A'}
-                        </td>
-                        <td className="px-4 xl:px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                          {sale.customerMobile || 'N/A'}
-                        </td>
-                        <td className="px-4 xl:px-6 py-4 text-sm text-gray-800">
-                          <div className="max-w-xs">
-                            {sale.items?.map((item, index) => (
-                              <div key={index} className="text-xs">
-                                {item.name} ({item.quantity}{item.unit === 'kg' ? 'g' : 'pcs'})
-                              </div>
-                            )) || '0 items'}
-                          </div>
-                        </td>
-                        <td className="px-4 xl:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          ₹{sale.total?.toFixed(2) || '0.00'}
-                        </td>
-                        <td className="px-4 xl:px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                          {sale.paymentMethod || 'N/A'}
+                    {paginatedSales.length === 0 ? (
+                      <tr>
+                        <td colSpan="9" className="px-4 xl:px-6 py-8 text-center text-sm text-gray-500">
+                          No sales found for the selected filters
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      paginatedSales.map((sale) => (
+                        <tr key={sale._id || sale.id || `sale-${Math.random()}`} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 xl:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {(sale._id || sale.id || '').toString().substring(0, 8)}
+                          </td>
+                          <td className="px-4 xl:px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                            {new Date(sale.createdAt || sale.date).toLocaleDateString('en-IN', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
+                          </td>
+                          <td className="px-4 xl:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {sale.shopName || 'N/A'}
+                          </td>
+                          <td className="px-4 xl:px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                            {sale.userName || sale.userEmail || 'N/A'}
+                          </td>
+                          <td className="px-4 xl:px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                            {sale.customerName || 'N/A'}
+                          </td>
+                          <td className="px-4 xl:px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                            {sale.customerMobile || 'N/A'}
+                          </td>
+                          <td className="px-4 xl:px-6 py-4 text-sm text-gray-800">
+                            <div className="max-w-xs">
+                              {sale.items?.map((item, index) => (
+                                <div key={index} className="text-xs">
+                                  {item.name} ({item.quantity}{item.unit === 'kg' ? 'g' : 'pcs'})
+                                </div>
+                              )) || '0 items'}
+                            </div>
+                          </td>
+                          <td className="px-4 xl:px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                            ₹{sale.total?.toFixed(2) || '0.00'}
+                          </td>
+                          <td className="px-4 xl:px-6 py-4 whitespace-nowrap text-sm text-gray-800 capitalize">
+                            {sale.paymentMethod || 'N/A'}
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -482,48 +559,68 @@ export default function SuperAdminReports() {
 
             {/* Mobile/Tablet Card View */}
             <div className="lg:hidden space-y-3 mb-4">
-              {paginatedSales.map((sale) => (
-                <div key={sale._id || sale.id || `sale-${Math.random()}`} className="bg-white shadow rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <p className="text-xs text-gray-600">Sale ID</p>
-                      <p className="text-sm font-semibold text-gray-900">{(sale._id || sale.id || '').toString().substring(0, 8)}</p>
+              {paginatedSales.length === 0 ? (
+                <div className="bg-white shadow rounded-lg p-4 text-center">
+                  <p className="text-sm text-gray-500">No sales found for the selected filters</p>
+                </div>
+              ) : (
+                paginatedSales.map((sale) => (
+                  <div key={sale._id || sale.id || `sale-${Math.random()}`} className="bg-white shadow rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <p className="text-xs text-gray-600">Sale ID</p>
+                        <p className="text-sm font-semibold text-gray-900">{(sale._id || sale.id || '').toString().substring(0, 8)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-600">Total</p>
+                        <p className="text-base font-semibold text-indigo-600">₹{sale.total?.toFixed(2) || '0.00'}</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs text-gray-600">Total</p>
-                      <p className="text-base font-semibold text-indigo-600">₹{sale.total?.toFixed(2) || '0.00'}</p>
-                    </div>
-                  </div>
-                  <div className="space-y-2 pt-2 border-t border-gray-100">
-                    <div className="flex justify-between">
-                      <span className="text-xs text-gray-600">Date:</span>
-                      <span className="text-xs text-gray-800">{new Date(sale.createdAt || sale.date).toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs text-gray-600">Customer:</span>
-                      <span className="text-xs text-gray-800">{sale.customerName || 'N/A'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs text-gray-600">Mobile:</span>
-                      <span className="text-xs text-gray-800">{sale.customerMobile || 'N/A'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs text-gray-600">Payment:</span>
-                      <span className="text-xs text-gray-800 capitalize">{sale.paymentMethod || 'N/A'}</span>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-600 mb-1">Items:</p>
-                      <div className="space-y-1">
-                        {sale.items?.map((item, index) => (
-                          <div key={index} className="text-xs text-gray-800">
-                            • {item.name} ({item.quantity}{item.unit === 'kg' ? 'g' : 'pcs'})
-                          </div>
-                        )) || <span className="text-xs text-gray-800">0 items</span>}
+                    <div className="space-y-2 pt-2 border-t border-gray-100">
+                      <div className="flex justify-between">
+                        <span className="text-xs text-gray-600">Date:</span>
+                        <span className="text-xs text-gray-800">
+                          {new Date(sale.createdAt || sale.date).toLocaleDateString('en-IN', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-xs text-gray-600">Shop:</span>
+                        <span className="text-xs font-medium text-gray-900">{sale.shopName || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-xs text-gray-600">User:</span>
+                        <span className="text-xs text-gray-800">{sale.userName || sale.userEmail || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-xs text-gray-600">Customer:</span>
+                        <span className="text-xs text-gray-800">{sale.customerName || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-xs text-gray-600">Mobile:</span>
+                        <span className="text-xs text-gray-800">{sale.customerMobile || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-xs text-gray-600">Payment:</span>
+                        <span className="text-xs text-gray-800 capitalize">{sale.paymentMethod || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-600 mb-1">Items:</p>
+                        <div className="space-y-1">
+                          {sale.items?.map((item, index) => (
+                            <div key={index} className="text-xs text-gray-800">
+                              • {item.name} ({item.quantity}{item.unit === 'kg' ? 'g' : 'pcs'})
+                            </div>
+                          )) || <span className="text-xs text-gray-800">0 items</span>}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
             <Pagination
               currentPage={currentPage}

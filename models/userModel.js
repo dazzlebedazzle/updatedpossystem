@@ -68,6 +68,13 @@ userSchema.pre('save', function(next) {
   next();
 });
 
+// Add indexes for performance optimization
+userSchema.index({ email: 1 }); // Already unique, but explicit index helps
+userSchema.index({ token: 1 }); // For token-based lookups
+userSchema.index({ role: 1 }); // For role filtering
+userSchema.index({ supplier: 1 }); // For supplier filtering
+userSchema.index({ name: 'text' }); // For text search
+
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 
 export default User;

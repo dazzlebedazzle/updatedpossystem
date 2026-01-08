@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -1376,12 +1375,12 @@ If you can't find it:
               
               {imagePreview && (
                 <div className="mt-4">
-                  <Image
+                  <img
                     src={imagePreview}
                     alt="Preview"
-                    width={500}
-                    height={500}
                     className="max-w-full h-auto rounded-lg border border-gray-300"
+                    loading="lazy"
+                    decoding="async"
                   />
                   <button
                     onClick={scanBarcodeFromImage}

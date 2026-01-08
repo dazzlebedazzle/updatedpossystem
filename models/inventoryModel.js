@@ -30,6 +30,12 @@ const inventorySchema = new mongoose.Schema({
   }
 });
 
+// Add indexes for performance optimization
+inventorySchema.index({ productId: 1 }); // For filtering by product
+inventorySchema.index({ userId: 1 }); // For filtering by user
+inventorySchema.index({ createdAt: -1 }); // For sorting by date
+inventorySchema.index({ productId: 1, createdAt: -1 }); // Compound index for product history
+
 const Inventory = mongoose.models.Inventory || mongoose.model('Inventory', inventorySchema);
 
 export default Inventory;

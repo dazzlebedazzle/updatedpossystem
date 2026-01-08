@@ -6,6 +6,7 @@ import { getSessionFromRequest } from '@/lib/auth-helper';
 // Mark this route as dynamic to prevent build-time analysis
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+export const revalidate = 30; // Revalidate every 30 seconds for products
 
 export async function GET(request) {
   try {
@@ -31,7 +32,11 @@ export async function GET(request) {
       );
     }
     
-    let products = await productDB.findAll();
+    // Use lean() and select only needed fields for better performance
+    let products = await productDB.findAll({ 
+      select: 'EAN_code product_name images unit supplier qty qty_sold price category shopId createdAt',
+      sort: { createdAt: -1 }
+    });
     
     // Filter products based on user's token/name
     // If user is an agent, show only products where product.supplier matches user.name
@@ -110,7 +115,8 @@ export async function POST(request) {
       expiry_date, 
       date_arrival,
       price,
-      category
+      category,
+      shopId
     } = await request.json();
     
     if (!EAN_code || !product_name || qty === undefined) {
@@ -131,8 +137,74 @@ export async function POST(request) {
       expiry_date: expiry_date || '',
       date_arrival: date_arrival || '',
       price: parseFloat(price || 0),
-      category: category || 'general'
+      category: category || 'general',
+      shopId: shopId || null
     });
+    
+    // If shopId is provided, add stock to that shop in warehouse inventory
+    if (shopId && qty > 0) {
+      try {
+        const { warehouseInventoryDB } = await import('@/lib/database');
+        const productObj = product.toObject ? product.toObject() : product;
+        const productId = productObj._id || productObj.id;
+        const quantity = parseInt(qty || 0);
+        
+        // Get or create warehouse inventory for this product
+        let warehouseInventory = await warehouseInventoryDB.findByProductId(productId);
+        
+        if (!warehouseInventory) {
+          // Create new warehouse inventory entry
+          const productDetails = {
+            EAN_code: productObj.EAN_code,
+            product_name: productObj.product_name,
+            category: productObj.category || 'general',
+            unit: productObj.unit || 'kg',
+            price: productObj.price || 0,
+            supplier: productObj.supplier || '',
+            expiry_date: productObj.expiry_date || '',
+            date_arrival: productObj.date_arrival || ''
+          };
+          
+          warehouseInventory = await warehouseInventoryDB.createOrUpdate(productId, {
+            mainWarehouseQty: 0,
+            subWarehouseStock: [],
+            shopStock: [{
+              shopId: shopId,
+              quantity: quantity
+            }],
+            productDetails
+          });
+        } else {
+          // Update existing warehouse inventory
+          const warehouseObj = warehouseInventory.toObject ? warehouseInventory.toObject() : warehouseInventory;
+          const shopStock = warehouseObj.shopStock || [];
+          const existingShopStock = shopStock.find(s => s.shopId?.toString() === shopId.toString());
+          
+          if (existingShopStock) {
+            // Update existing shop stock
+            existingShopStock.quantity = (existingShopStock.quantity || 0) + quantity;
+            await warehouseInventoryDB.update(warehouseObj._id, {
+              $set: {
+                shopStock: shopStock
+              }
+            });
+          } else {
+            // Add new shop stock entry
+            await warehouseInventoryDB.update(warehouseObj._id, {
+              $push: {
+                shopStock: {
+                  shopId: shopId,
+                  quantity: quantity
+                }
+              }
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error updating warehouse inventory:', error);
+        // Don't fail the product creation if inventory update fails
+      }
+    }
     
     return NextResponse.json({ success: true, product });
   } catch (error) {

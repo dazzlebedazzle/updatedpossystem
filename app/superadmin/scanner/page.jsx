@@ -1,14 +1,35 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Layout from '@/components/Layout';
-import { Html5Qrcode } from 'html5-qrcode';
-import { createWorker } from 'tesseract.js';
 import { toast } from '@/lib/toast';
 import { authenticatedFetch } from '@/lib/api-client';
+import { useRouter } from 'next/navigation';
+
+// Lazy load heavy libraries - only load when needed
+let Html5QrcodeClass = null;
+const loadHtml5Qrcode = async () => {
+  if (!Html5QrcodeClass) {
+    const html5qrcode = await import('html5-qrcode');
+    Html5QrcodeClass = html5qrcode.Html5Qrcode;
+  }
+  return Html5QrcodeClass;
+};
+
+// Lazy load tesseract - HUGE library (several MB)
+let createWorker = null;
+const loadTesseract = async () => {
+  if (!createWorker) {
+    const tesseract = await import('tesseract.js');
+    createWorker = tesseract.createWorker;
+  }
+  return createWorker;
+};
 
 export default function ScannerPage() {
+  const router = useRouter();
   const [scanning, setScanning] = useState(false);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -22,7 +43,13 @@ export default function ScannerPage() {
   const [processing, setProcessing] = useState(false);
   const [savedScans, setSavedScans] = useState([]);
   const [cameraPermissionStatus, setCameraPermissionStatus] = useState('prompt'); // 'prompt', 'granted', 'denied'
+  const [ocrScanning, setOcrScanning] = useState(false);
+  const [lastScannedCode, setLastScannedCode] = useState('');
   const html5QrCodeRef = useRef(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const ocrWorkerRef = useRef(null);
+  const ocrIntervalRef = useRef(null);
 
   useEffect(() => {
     fetchSavedScans();
@@ -230,8 +257,9 @@ export default function ScannerPage() {
       // Small delay to ensure permission state is updated
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      // Create new html5-qrcode instance
-      const html5QrCode = new Html5Qrcode("reader");
+      // Lazy load and create new html5-qrcode instance
+      const Html5QrcodeClass = await loadHtml5Qrcode();
+      const html5QrCode = new Html5QrcodeClass("reader");
       html5QrCodeRef.current = html5QrCode;
 
       // Try to start with environment camera (back camera)
@@ -258,7 +286,39 @@ export default function ScannerPage() {
         
         // Successfully started
         setCameraPermissionStatus('granted');
-        toast.success('Camera started successfully!', { duration: 2000 });
+        toast.success('Camera started successfully! Auto-scanning enabled.', { duration: 3000 });
+        
+        // Start OCR scanning for automatic text detection
+        setTimeout(() => {
+          // Get video element from html5-qrcode
+          const videoElement = document.querySelector('#reader video');
+          if (videoElement) {
+            videoRef.current = videoElement;
+            // Create canvas if it doesn't exist
+            if (!canvasRef.current) {
+              const canvas = document.createElement('canvas');
+              canvas.style.display = 'none';
+              document.body.appendChild(canvas);
+              canvasRef.current = canvas;
+            }
+            startOCRScanning();
+          } else {
+            // Retry after a bit more time if video element not found
+            setTimeout(() => {
+              const videoElement = document.querySelector('#reader video');
+              if (videoElement) {
+                videoRef.current = videoElement;
+                if (!canvasRef.current) {
+                  const canvas = document.createElement('canvas');
+                  canvas.style.display = 'none';
+                  document.body.appendChild(canvas);
+                  canvasRef.current = canvas;
+                }
+                startOCRScanning();
+              }
+            }, 1000);
+          }
+        }, 1500);
         
       } catch (envErr) {
         // If environment camera fails, try user camera (front camera)
@@ -284,7 +344,39 @@ export default function ScannerPage() {
           );
           
           setCameraPermissionStatus('granted');
-          toast.success('Camera started successfully!', { duration: 2000 });
+          toast.success('Camera started successfully! Auto-scanning enabled.', { duration: 3000 });
+          
+          // Start OCR scanning for automatic text detection
+          setTimeout(() => {
+            // Get video element from html5-qrcode
+            const videoElement = document.querySelector('#reader video');
+            if (videoElement) {
+              videoRef.current = videoElement;
+              // Create canvas if it doesn't exist
+              if (!canvasRef.current) {
+                const canvas = document.createElement('canvas');
+                canvas.style.display = 'none';
+                document.body.appendChild(canvas);
+                canvasRef.current = canvas;
+              }
+              startOCRScanning();
+            } else {
+              // Retry after a bit more time if video element not found
+              setTimeout(() => {
+                const videoElement = document.querySelector('#reader video');
+                if (videoElement) {
+                  videoRef.current = videoElement;
+                  if (!canvasRef.current) {
+                    const canvas = document.createElement('canvas');
+                    canvas.style.display = 'none';
+                    document.body.appendChild(canvas);
+                    canvasRef.current = canvas;
+                  }
+                  startOCRScanning();
+                }
+              }, 1000);
+            }
+          }, 1500);
           
         } catch (userErr) {
           // Both failed, throw the error
@@ -396,6 +488,9 @@ If you can't find it:
   };
 
   const stopCamera = () => {
+    // Stop OCR scanning first
+    stopOCRScanning();
+    
     if (html5QrCodeRef.current) {
       html5QrCodeRef.current.stop().then(() => {
         html5QrCodeRef.current.clear();
@@ -420,9 +515,377 @@ If you can't find it:
     }
   };
 
-  const handleBarcodeScanned = (barcode) => {
+  const handleBarcodeScanned = async (barcode) => {
     setScannedData(prev => ({ ...prev, barcode }));
     toast.success(`Barcode scanned: ${barcode}`);
+    // Try to find product and add to cart (pass barcode as text for weight extraction)
+    await searchProductByCodeAndAddToCart(barcode, barcode);
+  };
+
+  // Extract EAN code from text
+  // Pattern: Remove prefix "2110000" and suffix "00250" from codes like "211000060002004700250"
+  // Result: "600020047" (the middle EAN code)
+  const extractEANCode = (text) => {
+    if (!text) return null;
+    
+    console.log('Extracting EAN code from text:', text);
+    
+    // Look for long barcode numbers (20+ digits) that match the pattern
+    // Pattern: 2110000 + EAN_CODE + 00250
+    const longBarcodePattern = /2110000(\d{8,13})00250/g;
+    let match = longBarcodePattern.exec(text);
+    
+    if (match && match[1]) {
+      const eanCode = match[1];
+      console.log(`✅ Extracted EAN code using pattern: ${eanCode} (from ${match[0]})`);
+      return eanCode;
+    }
+    
+    // Also try to find the pattern in any long number sequence
+    const longNumberPattern = /\d{20,}/g;
+    const longNumbers = text.match(longNumberPattern);
+    
+    if (longNumbers && longNumbers.length > 0) {
+      console.log('Found long numbers:', longNumbers);
+      
+      for (const longNum of longNumbers) {
+        // Check if it starts with "2110000" and ends with "00250"
+        if (longNum.startsWith('2110000') && longNum.endsWith('00250')) {
+          // Extract the middle part (EAN code)
+          const eanCode = longNum.substring(7, longNum.length - 5);
+          if (eanCode.length >= 8 && eanCode.length <= 13) {
+            console.log(`✅ Extracted EAN code: ${eanCode} (from ${longNum})`);
+            return eanCode;
+          }
+        }
+        
+        // Also try to find pattern anywhere in the number
+        const patternIndex = longNum.indexOf('2110000');
+        if (patternIndex !== -1) {
+          const afterPrefix = longNum.substring(patternIndex + 7);
+          const suffixIndex = afterPrefix.indexOf('00250');
+          if (suffixIndex !== -1 && suffixIndex >= 8 && suffixIndex <= 13) {
+            const eanCode = afterPrefix.substring(0, suffixIndex);
+            console.log(`✅ Extracted EAN code from pattern: ${eanCode} (from ${longNum})`);
+            return eanCode;
+          }
+        }
+      }
+    }
+    
+    // Fallback: try to find standalone 8-13 digit codes
+    const codePattern = /\b\d{8,13}\b/g;
+    let matches = text.match(codePattern);
+    
+    if (matches && matches.length > 0) {
+      console.log('Found standalone codes:', matches);
+      // Prefer codes that don't start with 0
+      const validCodes = matches.filter(code => !code.startsWith('0'));
+      if (validCodes.length > 0) {
+        return validCodes[0];
+      }
+      return matches[0];
+    }
+    
+    console.log('No EAN code found in text');
+    return null;
+  };
+
+  // Extract weight from text and convert to grams
+  const extractWeight = (text) => {
+    if (!text) return null;
+    
+    console.log('Extracting weight from text:', text);
+    
+    // Look for weight patterns like "0.25kg", "0.250kg", "Weight: 0.25kg", etc.
+    const weightPatterns = [
+      /Weight[:\s]*([\d.]+)\s*kg/i,
+      /([\d.]+)\s*kg/i,
+      /Weight[:\s]*([\d.]+)/i,
+      /([\d.]+)\s*Kg/i,
+    ];
+    
+    for (const pattern of weightPatterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        const weightKg = parseFloat(match[1]);
+        if (!isNaN(weightKg) && weightKg > 0) {
+          // Convert kg to grams
+          const weightGrams = Math.round(weightKg * 1000);
+          console.log(`✅ Extracted weight: ${weightKg}kg = ${weightGrams}g`);
+          return weightGrams;
+        }
+      }
+    }
+    
+    console.log('No weight found in text');
+    return null;
+  };
+
+  // Search product by EAN code
+  const searchProductByCode = async (code) => {
+    if (!code || code.trim().length === 0) return null;
+    
+    try {
+      const response = await authenticatedFetch('/api/products');
+      if (response.ok) {
+        const data = await response.json();
+        const products = data.products || [];
+        
+        // Try to match code with EAN_code (convert to number if possible)
+        const codeNum = parseInt(code);
+        const matchedProduct = products.find(product => {
+          const productObj = product.toObject ? product.toObject() : product;
+          const eanCode = productObj.EAN_code;
+          // Match as number or string
+          return eanCode === codeNum || eanCode?.toString() === code.toString();
+        });
+        
+        if (matchedProduct) {
+          const productObj = matchedProduct.toObject ? matchedProduct.toObject() : matchedProduct;
+          return productObj;
+        }
+      }
+    } catch (error) {
+      console.error('Error searching product by code:', error);
+    }
+    return null;
+  };
+
+  // Add product to cart automatically
+  const addProductToCart = async (product, weightInGrams = null) => {
+    try {
+      const unit = product.unit || 'kg';
+      
+      // Use extracted weight if provided, otherwise use default
+      let quantity;
+      if (weightInGrams !== null && weightInGrams > 0) {
+        if (unit === 'kg') {
+          quantity = weightInGrams; // Quantity in grams for kg products
+        } else {
+          quantity = Math.round(weightInGrams / 1000); // Convert to units for piece products
+        }
+        console.log(`Using extracted weight: ${weightInGrams}g = ${quantity} ${unit === 'kg' ? 'grams' : 'units'}`);
+      } else {
+        quantity = unit === 'kg' ? 100 : 1; // Default: 100g for kg, 1 for pieces
+        console.log(`Using default quantity: ${quantity}`);
+      }
+      
+      // Store cart item in localStorage so POS page can read it
+      const cartItem = {
+        productId: product._id || product.id,
+        name: product.product_name || product.name,
+        price: product.price || 0,
+        quantity: quantity,
+        unit: unit,
+        profit: product.profit || 0,
+        product_code: product.EAN_code || '',
+        discount: product.discount || 0,
+        addedAt: new Date().toISOString(),
+        source: 'scanner'
+      };
+
+      // Get existing cart items from localStorage
+      const existingCart = JSON.parse(localStorage.getItem('pos_cart') || '[]');
+      
+      // Check if product already exists in cart
+      const existingItemIndex = existingCart.findIndex(item => item.productId === cartItem.productId);
+      
+      if (existingItemIndex >= 0) {
+        // Update quantity if exists
+        existingCart[existingItemIndex].quantity += cartItem.quantity;
+        toast.success(`Product quantity updated in cart: ${cartItem.name}`);
+      } else {
+        // Add new item
+        existingCart.push(cartItem);
+        toast.success(`Product added to cart: ${cartItem.name}`);
+      }
+
+      // Save to localStorage
+      localStorage.setItem('pos_cart', JSON.stringify(existingCart));
+      
+      // Also trigger a custom event so POS page can listen and update
+      window.dispatchEvent(new CustomEvent('cartUpdated', { detail: cartItem }));
+      
+      console.log('✅ Product added to cart:', cartItem);
+      console.log('📊 Cart item details:', {
+        name: cartItem.name,
+        quantity: cartItem.quantity,
+        unit: cartItem.unit,
+        price: cartItem.price
+      });
+      
+      // Don't redirect here - let the calling function handle redirect after all logs
+      return true;
+    } catch (error) {
+      console.error('Error adding product to cart:', error);
+      toast.error('Failed to add product to cart');
+      return false;
+    }
+  };
+
+  // Search product by code and automatically add to cart
+  const searchProductByCodeAndAddToCart = async (code, text = null) => {
+    const eanCode = extractEANCode(code || text || '');
+    const searchCode = eanCode || code;
+    
+    if (!searchCode) {
+      console.log('No EAN code found to search');
+      return false;
+    }
+    
+    // Extract weight from text if provided (convert kg to grams)
+    const weightInGrams = text ? extractWeight(text) : null;
+    if (weightInGrams) {
+      console.log(`✅ Weight extracted: ${weightInGrams}g (will be used as quantity)`);
+    }
+    
+    const product = await searchProductByCode(searchCode);
+    if (product) {
+      await addProductToCart(product, weightInGrams);
+      return true;
+    } else {
+      toast.info(`Product with code ${searchCode} not found in database`);
+      return false;
+    }
+  };
+
+  // Continuous OCR scanning from camera
+  const startOCRScanning = async () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    
+    try {
+      // Initialize Tesseract worker
+      if (!ocrWorkerRef.current) {
+        const createWorkerFn = await loadTesseract();
+        ocrWorkerRef.current = await createWorkerFn('eng');
+        await ocrWorkerRef.current.setParameters({
+          tessedit_char_whitelist: '0123456789',
+        });
+      }
+      
+      setOcrScanning(true);
+      
+      // Capture frame every 2 seconds and process
+      ocrIntervalRef.current = setInterval(async () => {
+        if (!videoRef.current || !canvasRef.current || !ocrWorkerRef.current) return;
+        
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        
+        if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+        
+        // Set canvas size to match video
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        // Draw video frame to canvas
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        try {
+          let text = '';
+          
+          // Try OCR.space API first (convert canvas to blob)
+          try {
+            const blob = await new Promise((resolve) => {
+              canvas.toBlob(resolve, 'image/jpeg', 0.8);
+            });
+            
+            if (blob) {
+              console.log('=== CAMERA FRAME OCR API CALL ===');
+              console.log('Blob size:', blob.size, 'bytes');
+              console.log('API Endpoint: /api/ocr');
+              
+              const formData = new FormData();
+              formData.append('image', blob, 'frame.jpg');
+              
+              const startTime = Date.now();
+              const response = await authenticatedFetch('/api/ocr', {
+                method: 'POST',
+                body: formData,
+              });
+              const endTime = Date.now();
+              
+              console.log(`Camera OCR API call completed in ${endTime - startTime}ms`);
+              console.log('Response status:', response.status);
+              
+              const data = await response.json();
+              console.log('Camera OCR API Response:', data);
+              
+              if (data.success && data.text) {
+                text = data.text;
+                console.log('✅ OCR.space API success for camera frame');
+              } else {
+                throw new Error('API failed');
+              }
+            }
+          } catch (apiError) {
+            // Fallback to Tesseract if API fails
+            console.log('OCR.space API failed, using Tesseract fallback for camera');
+            if (ocrWorkerRef.current) {
+              const { data: { text: tesseractText } } = await ocrWorkerRef.current.recognize(canvas);
+              text = tesseractText;
+            }
+          }
+          
+          // Log extracted text to console
+          if (text && text.trim().length > 0) {
+            console.log('=== EXTRACTED TEXT FROM CAMERA ===');
+            console.log('Full text:', text);
+            console.log('Text length:', text.length);
+            console.log('==================================');
+            
+            const eanCode = extractEANCode(text);
+            const weightInGrams = extractWeight(text);
+            console.log('Extracted EAN code:', eanCode);
+            console.log('Extracted weight:', weightInGrams ? `${weightInGrams}g` : 'not found');
+            
+            if (eanCode && eanCode !== lastScannedCode) {
+              console.log('✅ New code detected:', eanCode);
+              setLastScannedCode(eanCode);
+              
+              // Search and add to cart with weight
+              const product = await searchProductByCode(eanCode);
+              if (product) {
+                console.log('✅ Product found:', product.product_name);
+                await addProductToCart(product, weightInGrams);
+                // Stop scanning after successful add
+                stopOCRScanning();
+                stopCamera();
+              } else {
+                console.log('❌ Product not found for code:', eanCode);
+              }
+            }
+          } else {
+            console.log('No text detected in camera frame');
+          }
+        } catch (ocrError) {
+          // Log OCR errors
+          console.log('OCR error:', ocrError);
+        }
+      }, 2000); // Scan every 2 seconds
+      
+    } catch (error) {
+      console.error('Error starting OCR scanning:', error);
+      toast.error('Failed to start OCR scanning');
+      setOcrScanning(false);
+    }
+  };
+
+  const stopOCRScanning = () => {
+    if (ocrIntervalRef.current) {
+      clearInterval(ocrIntervalRef.current);
+      ocrIntervalRef.current = null;
+    }
+    setOcrScanning(false);
+    setLastScannedCode('');
+    
+    // Clean up worker
+    if (ocrWorkerRef.current) {
+      ocrWorkerRef.current.terminate().catch(() => {});
+      ocrWorkerRef.current = null;
+    }
   };
 
   const scanBarcodeFromImage = async () => {
@@ -433,17 +896,24 @@ If you can't find it:
 
     setProcessing(true);
     try {
-      const html5QrCode = new Html5Qrcode("reader");
+      // Lazy load html5-qrcode
+      const Html5QrcodeClass = await loadHtml5Qrcode();
+      const html5QrCode = new Html5QrcodeClass("reader");
       
       // Try to scan barcode from image
       try {
         const result = await html5QrCode.scanFile(imageFile, false);
+        console.log('✅ Barcode found:', result);
         handleBarcodeScanned(result);
-      } catch {
-        console.log('No barcode found in image, will try OCR');
+        // Don't proceed to OCR if barcode was found
+        return;
+      } catch (barcodeError) {
+        console.log('❌ No barcode found in image, will try OCR');
+        console.log('Barcode scan error:', barcodeError);
       }
 
       // Now try OCR for text extraction
+      console.log('🔄 Starting OCR text extraction...');
       await extractTextFromImage();
     } catch (error) {
       console.error('Error scanning barcode:', error);
@@ -458,47 +928,148 @@ If you can't find it:
     if (!imageFile) return;
 
     setProcessing(true);
-    let worker = null;
+    let text = '';
+    
     try {
-      worker = await createWorker('eng');
-      const { data: { text } } = await worker.recognize(imageFile);
+      // First, try OCR.space API (faster and more accurate)
+      console.log('=== STARTING OCR API CALL ===');
+      console.log('Image file:', imageFile.name, 'Size:', imageFile.size, 'bytes', 'Type:', imageFile.type);
+      console.log('API Endpoint: /api/ocr');
+      console.log('Method: POST');
       
-      // Clean up worker
-      await worker.terminate();
-      worker = null;
-
-      // Check if text was extracted
-      if (!text || text.trim().length === 0) {
-        toast.info('No text found in image');
-        return;
-      }
-
-      // Parse the extracted text
-      parseExtractedText(text);
-      toast.success('Text extracted from image');
-    } catch (error) {
-      // Ensure worker is terminated even on error
-      if (worker) {
-        try {
-          await worker.terminate();
-        } catch (terminateError) {
-          console.log('Error terminating worker:', terminateError);
-        }
-      }
+      const formData = new FormData();
+      formData.append('image', imageFile);
       
-      // Log detailed error information
-      const errorMessage = error?.message || error?.toString() || 'Unknown error occurred';
-      const errorName = error?.name || 'Error';
-      console.error('Error extracting text:', {
-        name: errorName,
-        message: errorMessage,
-        error: error
+      console.log('Sending request to /api/ocr...');
+      const startTime = Date.now();
+      
+      const response = await authenticatedFetch('/api/ocr', {
+        method: 'POST',
+        body: formData,
       });
       
-      toast.error(`Failed to extract text: ${errorMessage}`);
-    } finally {
-      setProcessing(false);
+      const endTime = Date.now();
+      console.log(`API call completed in ${endTime - startTime}ms`);
+      console.log('Response status:', response.status, response.statusText);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      const data = await response.json();
+      
+      console.log('=== OCR API RESPONSE ===');
+      console.log('Full response data:', data);
+      console.log('Response success:', data.success);
+      console.log('Extracted text:', data.text);
+      console.log('Text length:', data.text?.length || 0);
+      
+      if (!response.ok) {
+        console.error('❌ OCR API Error Response:', data);
+        throw new Error(data.error || `API returned status ${response.status}`);
+      }
+      
+      if (data.success && data.text) {
+        text = data.text;
+        console.log('✅ OCR.space API success - Text extracted');
+        console.log('📄 Extracted text preview:', text.substring(0, 200));
+      } else {
+        console.log('❌ OCR.space API failed:', data.error || 'Unknown error');
+        console.log('Full response:', data);
+        throw new Error(data.error || data.details || 'OCR.space API failed');
+      }
+    } catch (apiError) {
+      console.error('OCR.space API error, using Tesseract.js fallback:', apiError);
+      console.error('Error details:', {
+        message: apiError.message,
+        stack: apiError.stack,
+        name: apiError.name
+      });
+      
+      // Show user-friendly error message
+      if (apiError.message && !apiError.message.includes('fallback')) {
+        toast.error(`OCR API Error: ${apiError.message}. Trying fallback...`);
+      }
+      
+      // Fallback to Tesseract.js if API fails
+      let worker = null;
+      try {
+        console.log('Initializing Tesseract.js fallback...');
+        const createWorkerFn = await loadTesseract();
+        worker = await createWorkerFn('eng');
+        console.log('Tesseract worker created, recognizing text...');
+        const { data: { text: tesseractText } } = await worker.recognize(imageFile);
+        text = tesseractText;
+        
+        // Clean up worker
+        await worker.terminate();
+        worker = null;
+        console.log('✅ Tesseract.js fallback success');
+        toast.info('Used offline OCR (Tesseract.js)');
+      } catch (tesseractError) {
+        // Ensure worker is terminated even on error
+        if (worker) {
+          try {
+            await worker.terminate();
+          } catch (terminateError) {
+            console.log('Error terminating worker:', terminateError);
+          }
+        }
+        
+        console.error('Both OCR methods failed:', {
+          apiError: apiError.message,
+          tesseractError: tesseractError.message
+        });
+        
+        toast.error(`Failed to extract text: ${apiError.message || tesseractError.message}`);
+        setProcessing(false);
+        return;
+      }
     }
+
+    // Log extracted text to console
+    console.log('=== EXTRACTED TEXT FROM IMAGE ===');
+    console.log('Full text:', text);
+    console.log('Text length:', text?.length || 0);
+    console.log('================================');
+
+    // Check if text was extracted
+    if (!text || text.trim().length === 0) {
+      console.log('No text found in image');
+      toast.info('No text found in image');
+      setProcessing(false);
+      return;
+    }
+
+    // Parse the extracted text
+    parseExtractedText(text);
+    
+    // Extract weight from text (convert kg to grams)
+    const weightInGrams = extractWeight(text);
+    console.log('⚖️ Weight extracted from image:', weightInGrams ? `${weightInGrams}g` : 'not found');
+    
+    // Try to extract EAN code and add to cart with weight
+    const eanCode = extractEANCode(text);
+    console.log('🔍 EAN code extracted:', eanCode || 'not found');
+    
+    if (eanCode) {
+      console.log('🔎 Searching for product with EAN code:', eanCode);
+      console.log('📦 Will add to cart with weight:', weightInGrams ? `${weightInGrams}g` : 'default quantity');
+      
+      const added = await searchProductByCodeAndAddToCart(eanCode, text);
+      
+      if (added) {
+        console.log('✅ Product added to cart successfully, redirecting to POS...');
+        toast.success('Product added to cart!');
+        // Small delay to show logs before redirect
+        setTimeout(() => {
+          router.push('/superadmin/pos');
+        }, 1000);
+      }
+    } else {
+      console.log('⚠️ No EAN code found in extracted text');
+      toast.info('Text extracted but no product code found');
+    }
+    
+    toast.success('Text extracted from image');
+    setProcessing(false);
   };
 
   const parseExtractedText = (text) => {
@@ -603,6 +1174,7 @@ If you can't find it:
 
   useEffect(() => {
     return () => {
+      stopOCRScanning();
       if (html5QrCodeRef.current) {
         stopCamera();
       }
@@ -643,6 +1215,22 @@ If you can't find it:
             {/* Camera Scanner */}
             <div className="mb-4">
               <div id="reader" className="w-full mb-4" style={{ display: scanning ? 'block' : 'none' }}></div>
+              
+              {ocrScanning && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <p className="text-sm text-blue-800">
+                      <strong>Auto-scanning enabled:</strong> Camera is automatically reading codes. Point at product codes to add to cart.
+                    </p>
+                  </div>
+                  {lastScannedCode && (
+                    <p className="text-xs text-blue-600 mt-1 ml-6">
+                      Last detected code: {lastScannedCode}
+                    </p>
+                  )}
+                </div>
+              )}
               
               {cameraPermissionStatus === 'denied' && (
                 <div className="mb-4 p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg">

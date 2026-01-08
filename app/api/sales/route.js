@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { saleDB, productDB } from '@/lib/database';
+import { saleDB, productDB, shopDB } from '@/lib/database';
 import { hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
 import { getSessionFromRequest } from '@/lib/auth-helper';
 
@@ -36,15 +36,46 @@ export async function GET(request) {
     }
     
     // Fetch all sales from database using saleModel
-    let sales = await saleDB.findAll();
+    // Use lean() and select only needed fields for better performance
+    let sales = await saleDB.findAll({ 
+      select: '_id userId customerId customerName customerMobile customerAddress items total paymentMethod status createdAt',
+      sort: { createdAt: -1 }
+    });
+    
+    // Get shop information for all unique user IDs
+    const userIds = [...new Set(sales.map(sale => {
+      const saleObj = sale.toObject ? sale.toObject() : sale;
+      return saleObj.userId?._id?.toString() || saleObj.userId?.toString() || saleObj.userId;
+    }).filter(Boolean))];
+    
+    // Fetch shops for all users
+    const shopsByUserId = {};
+    for (const userId of userIds) {
+      try {
+        const shops = await shopDB.findByUserId(userId);
+        if (shops && shops.length > 0) {
+          const shopObj = shops[0].toObject ? shops[0].toObject() : shops[0];
+          shopsByUserId[userId] = shopObj.name || 'N/A';
+        }
+      } catch (error) {
+        console.error(`Error fetching shop for userId ${userId}:`, error);
+      }
+    }
     
     // Convert Mongoose documents to plain JSON objects
     sales = sales.map(sale => {
       const saleObj = sale.toObject ? sale.toObject() : sale;
+      const userId = saleObj.userId?._id?.toString() || saleObj.userId?.toString() || saleObj.userId;
+      const userName = saleObj.userId?.name || null;
+      const userEmail = saleObj.userId?.email || null;
+      
       return {
         _id: saleObj._id?.toString() || saleObj.id,
         id: saleObj._id?.toString() || saleObj.id,
-        userId: saleObj.userId?._id?.toString() || saleObj.userId?.toString() || saleObj.userId,
+        userId: userId,
+        userName: userName,
+        userEmail: userEmail,
+        shopName: userId ? (shopsByUserId[userId] || 'N/A') : 'N/A',
         customerId: saleObj.customerId?._id?.toString() || saleObj.customerId?.toString() || saleObj.customerId || null,
         customerName: saleObj.customerName || null,
         customerMobile: saleObj.customerMobile || null,
@@ -174,18 +205,57 @@ export async function POST(request) {
       status: 'completed'
     });
     
-    // Update product qty_sold
+    // Update product qty_sold and decrease inventory shop stock
     for (const item of saleItems) {
       const product = await productDB.findById(item.productId);
       if (product) {
-        const currentQtySold = product.qty_sold || 0;
+        const productObj = product.toObject ? product.toObject() : product;
+        const currentQtySold = productObj.qty_sold || 0;
         // Convert quantity to stock unit before updating
-        const unit = item.unit || product.unit || 'kg';
+        const unit = item.unit || productObj.unit || 'kg';
         const quantityInStockUnit = unit === 'kg' ? item.quantity / 1000 : item.quantity;
         
+        // Update product qty_sold
         await productDB.update(item.productId, {
           qty_sold: currentQtySold + quantityInStockUnit
         });
+        
+        // Decrease inventory shop stock if user has a shop
+        if (session.userId) {
+          try {
+            const { warehouseInventoryDB } = await import('@/lib/database');
+            const productId = productObj._id || productObj.id;
+            const warehouseInventory = await warehouseInventoryDB.findByProductId(productId);
+            
+            if (warehouseInventory) {
+              const warehouseObj = warehouseInventory.toObject ? warehouseInventory.toObject() : warehouseInventory;
+              const shopStock = warehouseObj.shopStock || [];
+              const userShopStock = shopStock.find(s => {
+                const shopId = s.shopId?.toString();
+                return shopId === session.userId.toString();
+              });
+              
+              if (userShopStock && userShopStock.quantity >= quantityInStockUnit) {
+                // Update shop stock
+                const updatedShopStock = shopStock.map(s => {
+                  if (s.shopId?.toString() === session.userId.toString()) {
+                    return { ...s, quantity: s.quantity - quantityInStockUnit };
+                  }
+                  return s;
+                });
+                
+                await warehouseInventoryDB.update(warehouseObj._id, {
+                  $set: {
+                    shopStock: updatedShopStock
+                  }
+                });
+              }
+            }
+          } catch (error) {
+            console.error('Error updating warehouse inventory on sale:', error);
+            // Don't fail the sale if inventory update fails
+          }
+        }
       }
     }
     

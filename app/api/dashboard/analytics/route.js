@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { saleDB, customerDB } from '@/lib/database';
 import { getSessionFromRequest } from '@/lib/auth-helper';
+import Sale from '@/models/saleModel';
+import Customer from '@/models/customerModel';
+import connectDB from '@/lib/db';
 
-// Mark this route as dynamic to prevent build-time analysis
+// Enable caching for better performance
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+export const revalidate = 60; // Revalidate every 60 seconds
 
 export async function GET(request) {
   try {
@@ -21,142 +25,126 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || 'daily'; // daily, monthly, yearly
 
-    // Fetch all sales and customers
-    let sales = await saleDB.findAll();
-    let customers = await customerDB.findAll();
-    
-    // Filter data based on user's token
-    // If user is an agent (agentToken), filter by their userId
+    await connectDB();
+
+    // Build match filter for agent users
+    const matchFilter = {};
     if (session.token === 'agentToken' && session.role === 'agent') {
-      const sessionUserId = session.userId?.toString();
-      
-      // Filter sales by agent's userId
-      sales = sales.filter(sale => {
-        const saleObj = sale.toObject ? sale.toObject() : sale;
-        const saleUserId = saleObj.userId?._id?.toString() || saleObj.userId?.toString() || saleObj.userId;
-        return saleUserId === sessionUserId;
-      });
-      
-      // Filter customers by agent's sales (same logic as customers API)
-      const customerIdentifiers = new Set();
-      const customerNameSet = new Set();
-      const customerPhoneSet = new Set();
-      
-      sales.forEach(sale => {
-        const saleObj = sale.toObject ? sale.toObject() : sale;
-        const customerName = (saleObj.customerName || '').trim().toLowerCase();
-        const customerPhone = (saleObj.customerMobile || saleObj.customerPhone || '').trim();
-        
-        if (customerName) {
-          customerNameSet.add(customerName);
-        }
-        if (customerPhone) {
-          const normalizedPhone = customerPhone.replace(/\s+/g, '').replace(/[^\d]/g, '');
-          customerPhoneSet.add(normalizedPhone);
-          customerPhoneSet.add(customerPhone.trim());
-        }
-        
-        if (customerName || customerPhone) {
-          const normalizedPhone = customerPhone.replace(/\s+/g, '').replace(/[^\d]/g, '');
-          customerIdentifiers.add(`${customerName}|${normalizedPhone}`);
-          if (customerPhone) {
-            customerIdentifiers.add(`${customerName}|${customerPhone.trim()}`);
-          }
-        }
-      });
-      
-      if (customerIdentifiers.size > 0 || customerNameSet.size > 0 || customerPhoneSet.size > 0) {
-        customers = customers.filter(customer => {
-          const customerObj = customer.toObject ? customer.toObject() : customer;
-          const customerName = (customerObj.name || '').trim().toLowerCase();
-          const customerPhone = (customerObj.phone || '').trim();
-          const normalizedPhone = customerPhone.replace(/\s+/g, '').replace(/[^\d]/g, '');
-          
-          const customerKey = `${customerName}|${normalizedPhone}`;
-          const customerKeyOriginal = `${customerName}|${customerPhone}`;
-          
-          return customerIdentifiers.has(customerKey) || 
-                 customerIdentifiers.has(customerKeyOriginal) ||
-                 (customerName && customerNameSet.has(customerName)) ||
-                 (customerPhone && (customerPhoneSet.has(normalizedPhone) || customerPhoneSet.has(customerPhone)));
-        });
-      } else {
-        customers = [];
-      }
+      matchFilter.userId = session.userId;
     }
 
-    // Convert Mongoose documents to plain JSON objects
-    sales = sales.map(sale => {
-      const saleObj = sale.toObject ? sale.toObject() : sale;
-      return {
-        _id: saleObj._id?.toString() || saleObj.id,
-        total: saleObj.total || 0,
-        createdAt: saleObj.createdAt || saleObj.date || new Date()
-      };
-    });
-
-    // Group data by period
-    const salesData = {};
-    const revenueData = {};
-    const customersData = {};
-
-    // Process sales
-    sales.forEach(sale => {
-      const date = new Date(sale.createdAt);
-      let key;
-
-      if (period === 'daily') {
-        key = date.toISOString().split('T')[0]; // YYYY-MM-DD
-      } else if (period === 'monthly') {
-        const month = date.getMonth() + 1;
-        const monthStr = month < 10 ? `0${month}` : `${month}`;
-        key = `${date.getFullYear()}-${monthStr}`; // YYYY-MM
-      } else if (period === 'yearly') {
-        key = String(date.getFullYear()); // YYYY
-      }
-
-      if (!salesData[key]) {
-        salesData[key] = 0;
-        revenueData[key] = 0;
-      }
-      salesData[key]++;
-      revenueData[key] += sale.total;
-    });
-
-    // Process customers (only for daily view)
+    // Build date grouping based on period
+    let dateGroupFormat;
     if (period === 'daily') {
-      customers.forEach(customer => {
-        const date = new Date(customer.createdAt || customer.date || new Date());
-        const key = date.toISOString().split('T')[0]; // YYYY-MM-DD
-
-        if (!customersData[key]) {
-          customersData[key] = 0;
-        }
-        customersData[key]++;
-      });
+      dateGroupFormat = {
+        year: { $year: '$createdAt' },
+        month: { $month: '$createdAt' },
+        day: { $dayOfMonth: '$createdAt' }
+      };
+    } else if (period === 'monthly') {
+      dateGroupFormat = {
+        year: { $year: '$createdAt' },
+        month: { $month: '$createdAt' }
+      };
+    } else {
+      dateGroupFormat = {
+        year: { $year: '$createdAt' }
+      };
     }
 
-    // Convert to arrays sorted by date
-    const formatSalesData = Object.keys(salesData)
-      .sort()
-      .map(key => ({
-        date: key,
-        sales: salesData[key]
-      }));
+    // Use MongoDB aggregation for sales data - much faster than fetching all
+    const salesAggregation = [
+      { $match: matchFilter },
+      {
+        $group: {
+          _id: dateGroupFormat,
+          sales: { $sum: 1 },
+          revenue: { $sum: '$total' }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+    ];
 
-    const formatRevenueData = Object.keys(revenueData)
-      .sort()
-      .map(key => ({
-        date: key,
-        revenue: revenueData[key]
-      }));
+    const salesResults = await Sale.aggregate(salesAggregation);
 
-    const formatCustomersData = Object.keys(customersData)
-      .sort()
-      .map(key => ({
-        date: key,
-        customers: customersData[key]
-      }));
+    // Format sales data
+    const salesData = [];
+    const formatRevenueData = [];
+    
+    salesResults.forEach(item => {
+      let dateKey;
+      if (period === 'daily') {
+        const month = String(item._id.month).padStart(2, '0');
+        const day = String(item._id.day).padStart(2, '0');
+        dateKey = `${item._id.year}-${month}-${day}`;
+      } else if (period === 'monthly') {
+        const month = String(item._id.month).padStart(2, '0');
+        dateKey = `${item._id.year}-${month}`;
+      } else {
+        dateKey = String(item._id.year);
+      }
+      
+      salesData.push({ date: dateKey, sales: item.sales });
+      formatRevenueData.push({ date: dateKey, revenue: item.revenue });
+    });
+
+    // Process customers only for daily view using aggregation
+    let formatCustomersData = [];
+    if (period === 'daily') {
+      const customerMatchFilter = {};
+      if (session.token === 'agentToken' && session.role === 'agent') {
+        // For agents, we need to match customers from their sales
+        const agentSales = await Sale.find(matchFilter).select('customerName customerMobile').lean();
+        const customerIdentifiers = new Set();
+        
+        agentSales.forEach(sale => {
+          const customerName = (sale.customerName || '').trim().toLowerCase();
+          const customerPhone = (sale.customerMobile || '').trim();
+          if (customerName || customerPhone) {
+            customerIdentifiers.add(`${customerName}|${customerPhone}`);
+          }
+        });
+
+        if (customerIdentifiers.size > 0) {
+          // Build OR query for matching customers
+          const orConditions = Array.from(customerIdentifiers).map(identifier => {
+            const [name, phone] = identifier.split('|');
+            const conditions = [];
+            if (name) conditions.push({ name: new RegExp(name, 'i') });
+            if (phone) conditions.push({ phone: phone });
+            return { $or: conditions };
+          });
+          customerMatchFilter.$or = orConditions;
+        } else {
+          customerMatchFilter._id = null; // No matching customers
+        }
+      }
+
+      const customersAggregation = [
+        { $match: customerMatchFilter },
+        {
+          $group: {
+            _id: {
+              year: { $year: '$createdAt' },
+              month: { $month: '$createdAt' },
+              day: { $dayOfMonth: '$createdAt' }
+            },
+            customers: { $sum: 1 }
+          }
+        },
+        { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+      ];
+
+      const customersResults = await Customer.aggregate(customersAggregation);
+      formatCustomersData = customersResults.map(item => {
+        const month = String(item._id.month).padStart(2, '0');
+        const day = String(item._id.day).padStart(2, '0');
+        return {
+          date: `${item._id.year}-${month}-${day}`,
+          customers: item.customers
+        };
+      });
+    }
 
     return NextResponse.json({
       sales: formatSalesData,

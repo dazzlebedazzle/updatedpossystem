@@ -26,8 +26,10 @@ export default function Layout({ children, userRole, userName }) {
   const sidebarWidth = useMemo(() => sidebarCollapsed ? 64 : 256, [sidebarCollapsed]);
 
   useEffect(() => {
-    // Get user from session
-    fetch('/api/auth/me')
+    // Get user from session - use default cache for bfcache compatibility
+    fetch('/api/auth/me', {
+      cache: 'default', // Compatible with back/forward cache
+    })
       .then(res => {
         if (res.ok) {
           return res.json();
@@ -69,6 +71,7 @@ export default function Layout({ children, userRole, userName }) {
       { href: `${basePath}/sales`, label: userRole === 'user' ? 'My Sales' : 'Sales', icon: '💰', module: MODULES.SALES },
       { href: `${basePath}/customers`, label: 'Customers', icon: '👤', module: MODULES.CUSTOMERS },
       { href: `${basePath}/inventory`, label: 'Inventory', icon: '📋', module: MODULES.INVENTORY },
+      { href: `${basePath}/sub-warehouses`, label: 'Sub-Warehouses', icon: '🏭', module: MODULES.INVENTORY },
       { href: `${basePath}/reports`, label: 'Reports', icon: '📈', module: MODULES.REPORTS },
     ];
 

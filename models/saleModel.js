@@ -83,6 +83,14 @@ saleSchema.pre('save', function(next) {
   next();
 });
 
+// Add indexes for performance optimization
+saleSchema.index({ userId: 1 }); // For filtering by user
+saleSchema.index({ customerId: 1 }); // For filtering by customer
+saleSchema.index({ createdAt: -1 }); // For sorting by date (most common query)
+saleSchema.index({ paymentMethod: 1 }); // For payment method filtering
+saleSchema.index({ status: 1 }); // For status filtering
+saleSchema.index({ createdAt: 1, userId: 1 }); // Compound index for user sales queries
+
 const Sale = mongoose.models.Sale || mongoose.model('Sale', saleSchema);
 
 export default Sale;

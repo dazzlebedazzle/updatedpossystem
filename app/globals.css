@@ -70,6 +70,18 @@ body {
   box-sizing: border-box;
 }
 
+/* Optimize font rendering */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Reduce paint complexity */
+img, video {
+  content-visibility: auto;
+}
+
 /* Smooth grid transitions */
 .grid-transition {
   transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);

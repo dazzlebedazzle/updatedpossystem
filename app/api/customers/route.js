@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { customerDB, saleDB } from '@/lib/database';
+import { customerDB, saleDB, shopDB } from '@/lib/database';
 import { hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
 import { getSessionFromRequest } from '@/lib/auth-helper';
 
@@ -32,6 +32,77 @@ export async function GET(request) {
     const userRole = session.role;
     
     let customers = await customerDB.findAll();
+    
+    // Get all sales to find customer-user relationships
+    let allSales = await saleDB.findAll({ 
+      select: '_id userId customerId customerName customerMobile customerPhone',
+      sort: { createdAt: -1 }
+    });
+    
+    // Create a map of customer to user/shop information
+    // Match customers by name+phone combination from sales
+    const customerToUserMap = new Map();
+    const userIds = new Set();
+    
+    allSales.forEach(sale => {
+      const saleObj = sale.toObject ? sale.toObject() : sale;
+      const userId = saleObj.userId?._id?.toString() || saleObj.userId?.toString() || saleObj.userId;
+      const customerName = (saleObj.customerName || '').trim().toLowerCase();
+      const customerPhone = (saleObj.customerMobile || saleObj.customerPhone || '').trim();
+      
+      if (customerName || customerPhone) {
+        const normalizedPhone = customerPhone.replace(/\s+/g, '').replace(/[^\d]/g, '');
+        const key = `${customerName}|${normalizedPhone}`;
+        
+        if (!customerToUserMap.has(key)) {
+          customerToUserMap.set(key, {
+            userId: userId,
+            userName: saleObj.userId?.name || null,
+            userEmail: saleObj.userId?.email || null
+          });
+        }
+        
+        if (userId) {
+          userIds.add(userId);
+        }
+      }
+    });
+    
+    // Get shop information for all unique user IDs
+    const shopsByUserId = {};
+    for (const userId of userIds) {
+      try {
+        const shops = await shopDB.findByUserId(userId);
+        if (shops && shops.length > 0) {
+          const shopObj = shops[0].toObject ? shops[0].toObject() : shops[0];
+          shopsByUserId[userId] = shopObj.name || 'N/A';
+        }
+      } catch (error) {
+        console.error(`Error fetching shop for userId ${userId}:`, error);
+      }
+    }
+    
+    // Add shop and user information to customers
+    customers = customers.map(customer => {
+      const customerObj = customer.toObject ? customer.toObject() : customer;
+      const customerName = (customerObj.name || '').trim().toLowerCase();
+      const customerPhone = (customerObj.phone || '').trim();
+      const normalizedPhone = customerPhone.replace(/\s+/g, '').replace(/[^\d]/g, '');
+      const key = `${customerName}|${normalizedPhone}`;
+      
+      const userInfo = customerToUserMap.get(key) || {};
+      const userId = userInfo.userId;
+      
+      return {
+        ...customerObj,
+        _id: customerObj._id?.toString() || customerObj.id,
+        id: customerObj._id?.toString() || customerObj.id,
+        userId: userId || null,
+        userName: userInfo.userName || null,
+        userEmail: userInfo.userEmail || null,
+        shopName: userId ? (shopsByUserId[userId] || 'N/A') : 'N/A'
+      };
+    });
     
     // If user is an agent (agentToken), filter customers by that agent's sales
     if (userToken === 'agentToken' && userRole === 'agent') {

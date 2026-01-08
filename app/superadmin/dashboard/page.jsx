@@ -1,21 +1,22 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import Layout from '@/components/Layout';
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer
-} from 'recharts';
 import { PageLoader, Loader } from '@/components/Loader';
 import { isTodayIST } from '@/lib/date-utils';
+
+// Lazy load heavy chart components for better performance
+const LineChart = dynamic(() => import('recharts').then(mod => mod.LineChart), { ssr: false });
+const Line = dynamic(() => import('recharts').then(mod => mod.Line), { ssr: false });
+const BarChart = dynamic(() => import('recharts').then(mod => mod.BarChart), { ssr: false });
+const Bar = dynamic(() => import('recharts').then(mod => mod.Bar), { ssr: false });
+const XAxis = dynamic(() => import('recharts').then(mod => mod.XAxis), { ssr: false });
+const YAxis = dynamic(() => import('recharts').then(mod => mod.YAxis), { ssr: false });
+const CartesianGrid = dynamic(() => import('recharts').then(mod => mod.CartesianGrid), { ssr: false });
+const Tooltip = dynamic(() => import('recharts').then(mod => mod.Tooltip), { ssr: false });
+const Legend = dynamic(() => import('recharts').then(mod => mod.Legend), { ssr: false });
+const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), { ssr: false });
 
 export default function SuperAdminDashboard() {
   const [stats, setStats] = useState({
@@ -55,19 +56,23 @@ export default function SuperAdminDashboard() {
     };
   }, [allSales]);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
+      // Use default cache for bfcache compatibility
       const [usersRes, productsRes, salesRes] = await Promise.all([
-        fetch('/api/users'),
-        fetch('/api/products'),
-        fetch('/api/sales')
+        fetch('/api/users', { cache: 'default' }),
+        fetch('/api/products', { cache: 'default' }),
+        fetch('/api/sales', { cache: 'default' })
       ]);
 
-      const usersData = await usersRes.json();
-      const productsData = await productsRes.json();
-      const salesData = await salesRes.json();
+      const [usersData, productsData, salesData] = await Promise.all([
+        usersRes.json(),
+        productsRes.json(),
+        salesRes.json()
+      ]);
 
-      const revenue = salesData.sales.reduce((sum, sale) => sum + (sale.total || 0), 0);
+      // Use useMemo for expensive calculations
+      const revenue = salesData.sales?.reduce((sum, sale) => sum + (sale.total || 0), 0) || 0;
 
       setAllSales(salesData.sales || []);
       setStats({
@@ -81,12 +86,15 @@ export default function SuperAdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const fetchChartData = useCallback(async () => {
     try {
       setChartLoading(true);
-      const response = await fetch(`/api/dashboard/analytics?period=${period}`);
+      // Use default cache for bfcache compatibility
+      const response = await fetch(`/api/dashboard/analytics?period=${period}`, {
+        cache: 'default'
+      });
       const data = await response.json();
 
       setSalesData(data.sales || []);
