@@ -34,6 +34,7 @@ export default function UserPOS() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [isPending, startTransition] = useTransition(); // For smooth category switching
   const [isMounted, setIsMounted] = useState(false);
+  const [error, setError] = useState(null);
   
   // Optimized category change handler
   const handleCategoryChange = useCallback((category) => {
@@ -103,9 +104,20 @@ export default function UserPOS() {
     hasFetchedRef.current = true;
     
     try {
-      console.log('Fetching products...');
+      setError(null);
       const response = await fetch('/api/products');
-      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch products: ${response.status} ${response.statusText}`);
+      }
+      
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        throw new Error('Invalid JSON response from server');
+      }
+      
       const allProducts = data.products || [];
       
       // Process all products
@@ -122,12 +134,16 @@ export default function UserPOS() {
         // Use requestIdleCallback if available, otherwise setTimeout
         if (typeof window !== 'undefined' && window.requestIdleCallback) {
           window.requestIdleCallback(() => {
-            setProducts(uniqueProducts);
+            if (isMounted) {
+              setProducts(uniqueProducts);
+            }
           }, { timeout: 1000 });
-        } else {
+        } else if (typeof window !== 'undefined') {
           // Fallback: load after a short delay to allow initial render
           setTimeout(() => {
-            setProducts(uniqueProducts);
+            if (isMounted) {
+              setProducts(uniqueProducts);
+            }
           }, 100);
         }
       } else {
@@ -135,17 +151,44 @@ export default function UserPOS() {
       }
     } catch (error) {
       console.error('Error fetching products:', error);
+      setError(error.message || 'Failed to load products. Please try again.');
       setLoading(false);
       setInitialLoadComplete(true);
       hasFetchedRef.current = false; // Allow retry on error
+      toast.error('Failed to load products. Please refresh the page.');
     } finally {
       isFetchingRef.current = false;
     }
-  }, []);
+  }, [isMounted]);
 
   // Set mounted state to ensure client-side only rendering
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     setIsMounted(true);
+    
+    // Global error handler for unhandled promise rejections
+    const handleUnhandledRejection = (event) => {
+      console.error('Unhandled promise rejection:', event.reason);
+      event.preventDefault(); // Prevent default browser error handling
+      setError('An unexpected error occurred. Please refresh the page.');
+    };
+    
+    // Global error handler for unhandled errors
+    const handleError = (event) => {
+      console.error('Unhandled error:', event.error);
+      setError('An unexpected error occurred. Please refresh the page.');
+    };
+    
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    window.addEventListener('error', handleError);
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+        window.removeEventListener('error', handleError);
+      }
+    };
   }, []);
 
   // Fetch products on mount only - use ref to ensure it only runs once
@@ -204,32 +247,49 @@ export default function UserPOS() {
   useEffect(() => {
     // Only run on client side
     if (typeof window === 'undefined') return;
-    if (!initialLoadComplete || products.length === 0) return;
+    if (!initialLoadComplete || products.length === 0 || !isMounted) return;
     
     try {
       const storedCart = localStorage.getItem('pos_cart');
       if (storedCart) {
-        const cartItems = JSON.parse(storedCart);
+        let cartItems;
+        try {
+          cartItems = JSON.parse(storedCart);
+        } catch (parseError) {
+          console.error('Error parsing cart from localStorage:', parseError);
+          // Clear corrupted data
+          localStorage.removeItem('pos_cart');
+          return;
+        }
+        
+        if (!Array.isArray(cartItems)) {
+          console.warn('Cart data is not an array, clearing localStorage');
+          localStorage.removeItem('pos_cart');
+          return;
+        }
+        
         // Only add items that were added from scanner (have source: 'scanner')
-        const scannerItems = cartItems.filter(item => item.source === 'scanner');
+        const scannerItems = cartItems.filter(item => item && item.source === 'scanner');
         if (scannerItems.length > 0) {
           // Process items directly from cartItem data (no need to find in products)
           scannerItems.forEach(cartItem => {
+            if (!cartItem || !cartItem.productId) return;
+            
             setCart(prevCart => {
               const existingItem = prevCart.find(item => item.productId === cartItem.productId);
               if (existingItem) {
                 return prevCart.map(item =>
                   item.productId === cartItem.productId
-                    ? { ...item, quantity: item.quantity + cartItem.quantity }
+                    ? { ...item, quantity: item.quantity + (cartItem.quantity || 0) }
                     : item
                 );
               } else {
                 return [...prevCart, {
                   productId: cartItem.productId,
-                  name: cartItem.name,
-                  price: cartItem.price,
-                  quantity: cartItem.quantity,
-                  unit: cartItem.unit,
+                  name: cartItem.name || 'Unknown',
+                  price: cartItem.price || 0,
+                  quantity: cartItem.quantity || 0,
+                  unit: cartItem.unit || 'kg',
                   profit: cartItem.profit || 0,
                   product_code: cartItem.product_code || '',
                   discount: cartItem.discount || 0
@@ -238,14 +298,19 @@ export default function UserPOS() {
             });
           });
           // Clear scanner items from localStorage after adding to cart
-          const remainingItems = cartItems.filter(item => item.source !== 'scanner');
-          localStorage.setItem('pos_cart', JSON.stringify(remainingItems));
+          const remainingItems = cartItems.filter(item => item && item.source !== 'scanner');
+          try {
+            localStorage.setItem('pos_cart', JSON.stringify(remainingItems));
+          } catch (storageError) {
+            console.error('Error saving to localStorage:', storageError);
+          }
         }
       }
     } catch (error) {
       console.error('Error reading cart from localStorage:', error);
+      // Don't crash the app, just log the error
     }
-  }, [initialLoadComplete, products.length]); // Only run when initial load is complete
+  }, [initialLoadComplete, products.length, isMounted]); // Only run when initial load is complete
 
   // Memoize unique products to avoid recalculating on every render
   const uniqueProducts = useMemo(() => {
@@ -494,9 +559,7 @@ export default function UserPOS() {
           }),
         });
         
-        if (customerResponse.ok) {
-          // Customer saved successfully (or already exists)
-        } else {
+        if (!customerResponse.ok) {
           // Customer save failed, but continue with sale anyway
           console.warn('Failed to save customer, continuing with sale');
         }
@@ -524,42 +587,63 @@ export default function UserPOS() {
         }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        toast.success('Sale completed successfully!');
-        
-        // Prepare receipt data
-        const receipt = {
-          receiptNumber: data.sale._id || 'RS-' + Date.now(),
-          date: new Date(),
-          customerName: customerData.name,
-          customerMobile: customerData.mobile,
-          customerAddress: customerData.address,
-          paymentMethod: customerData.paymentType,
-          items: cart.map(item => ({
-            name: item.name,
-            quantity: item.quantity,
-            unit: item.unit,
-            price: item.price,
-            total: (item.unit === 'kg' ? item.quantity / 1000 : item.quantity) * item.price
-          })),
-          subtotal: getTotal,
-          total: getTotal
-        };
-        
-        setReceiptData(receipt);
-        setShowCheckoutPopup(false);
-        setShowReceipt(true);
-        setCart([]);
-        setCustomerData({ name: '', mobile: '', address: '', paymentType: '' });
-        fetchProducts(true); // Force refresh after checkout
-      } else {
-        const data = await response.json();
-        toast.error(data.error || 'Checkout failed');
+      if (!response.ok) {
+        let errorMessage = 'Checkout failed';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          errorMessage = `Server error: ${response.status} ${response.statusText}`;
+        }
+        toast.error(errorMessage);
+        return;
+      }
+
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        throw new Error('Invalid response from server');
+      }
+
+      if (!data || !data.sale) {
+        throw new Error('Invalid sale data received');
+      }
+
+      toast.success('Sale completed successfully!');
+      
+      // Prepare receipt data
+      const receipt = {
+        receiptNumber: data.sale._id || 'RS-' + Date.now(),
+        date: new Date(),
+        customerName: customerData.name,
+        customerMobile: customerData.mobile,
+        customerAddress: customerData.address,
+        paymentMethod: customerData.paymentType,
+        items: cart.map(item => ({
+          name: item.name || 'Unknown',
+          quantity: item.quantity || 0,
+          unit: item.unit || 'kg',
+          price: item.price || 0,
+          total: ((item.unit === 'kg' ? item.quantity / 1000 : item.quantity) || 0) * (item.price || 0)
+        })),
+        subtotal: getTotal,
+        total: getTotal
+      };
+      
+      setReceiptData(receipt);
+      setShowCheckoutPopup(false);
+      setShowReceipt(true);
+      setCart([]);
+      setCustomerData({ name: '', mobile: '', address: '', paymentType: '' });
+      
+      // Force refresh after checkout
+      if (isMounted) {
+        fetchProducts(true);
       }
     } catch (error) {
       console.error('Error during checkout:', error);
-      toast.error('Checkout failed');
+      toast.error(error.message || 'Checkout failed. Please try again.');
     } finally {
       setIsProcessingCheckout(false);
     }
@@ -575,6 +659,30 @@ export default function UserPOS() {
     }
     return null;
   }, []);
+
+  // Show error state if there's a critical error
+  if (error && !initialLoadComplete) {
+    return (
+      <Layout userRole="user">
+        <div className="px-4 py-6 sm:px-0">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <h2 className="text-lg font-semibold text-red-900 mb-2">Error Loading Products</h2>
+            <p className="text-red-800 mb-4">{error}</p>
+            <button
+              onClick={() => {
+                setError(null);
+                hasFetchedRef.current = false;
+                fetchProducts(true);
+              }}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout userRole="user">
