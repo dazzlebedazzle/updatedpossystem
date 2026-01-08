@@ -1,11 +1,81 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, memo, useRef, useTransition } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo, useRef, useTransition, Component } from 'react';
+import dynamic from 'next/dynamic';
 import Layout from '@/components/Layout';
 import { toast } from '@/lib/toast';
-import Receipt from '@/components/Receipt';
 import SafeImage from '@/components/SafeImage';
 import { categories as predefinedCategories, getCategoryImage } from '@/lib/categories';
+
+// Error Boundary Component for catching errors in Receipt component
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('Receipt component error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-bold text-red-900 mb-2">Error Loading Receipt</h3>
+            <p className="text-red-800 mb-4">There was an error loading the receipt. Please try again.</p>
+            <button
+              onClick={() => {
+                this.setState({ hasError: false, error: null });
+                if (this.props.onClose) this.props.onClose();
+              }}
+              className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Dynamically import Receipt component to avoid webpack module loading issues with jsPDF
+// This prevents the "Cannot read properties of undefined (reading 'call')" error
+// The component will only be loaded when showReceipt is true, avoiding initial bundle issues
+const Receipt = dynamic(
+  () => import('@/components/Receipt').catch((error) => {
+    console.error('Failed to load Receipt component:', error);
+    // Return a fallback component
+    return {
+      default: ({ onClose }) => (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-bold text-red-900 mb-2">Error Loading Receipt</h3>
+            <p className="text-red-800 mb-4">Failed to load receipt component. Please refresh the page.</p>
+            <button
+              onClick={onClose}
+              className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )
+    };
+  }),
+  {
+    ssr: false,
+    loading: () => null // Don't show loading indicator, component will appear when ready
+  }
+);
 
 const categoryIcons = {
   'all': '🏪',
@@ -713,6 +783,7 @@ export default function UserPOS() {
         showReceipt={showReceipt}
         setShowReceipt={setShowReceipt}
         receiptData={receiptData}
+        isMounted={isMounted}
       />
     </Layout>
   );
@@ -806,6 +877,7 @@ function POSContent({
   showReceipt,
   setShowReceipt,
   receiptData,
+  isMounted = false,
   isPending = false
 }) {
   const [showCartMobile, setShowCartMobile] = useState(false);
@@ -1274,12 +1346,14 @@ function POSContent({
           </>
         )}
 
-        {/* Receipt Modal */}
+        {/* Receipt Modal - Only render when mounted and receipt data is available */}
         {isMounted && showReceipt && receiptData && (
-          <Receipt 
-            saleData={receiptData}
-            onClose={() => setShowReceipt(false)}
-          />
+          <ErrorBoundary onClose={() => setShowReceipt(false)}>
+            <Receipt 
+              saleData={receiptData}
+              onClose={() => setShowReceipt(false)}
+            />
+          </ErrorBoundary>
         )}
     </div>
   );

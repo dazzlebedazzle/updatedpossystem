@@ -2,7 +2,6 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
-import jsPDF from 'jspdf';
 
 export default function Receipt({ saleData, onClose }) {
   const receiptRef = useRef();
@@ -312,176 +311,184 @@ export default function Receipt({ saleData, onClose }) {
   };
 
   const handleSavePDF = async () => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 10;
-    let yPosition = 10;
-    const maxWidth = pageWidth - (margin * 2);
-
-    // Header with Logo
     try {
-      // Load logo image
-      const logoImg = new Image();
-      logoImg.crossOrigin = 'anonymous';
-      logoImg.src = '/assets/category_images/logoo.png';
+      // Dynamically import jsPDF only when needed to avoid webpack module loading issues
+      const { default: jsPDF } = await import('jspdf');
       
-      // Wait for image to load
-      await new Promise((resolve) => {
-        if (logoImg.complete) {
-          resolve();
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 10;
+      let yPosition = 10;
+      const maxWidth = pageWidth - (margin * 2);
+
+      // Header with Logo
+      try {
+        // Load logo image
+        const logoImg = new Image();
+        logoImg.crossOrigin = 'anonymous';
+        logoImg.src = '/assets/category_images/logoo.png';
+        
+        // Wait for image to load
+        await new Promise((resolve) => {
+          if (logoImg.complete) {
+            resolve();
+          } else {
+            logoImg.onload = resolve;
+            logoImg.onerror = () => {
+              console.warn('Logo image failed to load, using text fallback');
+              resolve(); // Resolve anyway to continue with fallback
+            };
+          }
+        });
+        
+        // Add logo to PDF if loaded successfully
+        if (logoImg.naturalWidth > 0) {
+          const logoWidth = 50;
+          const logoHeight = (logoImg.naturalHeight / logoImg.naturalWidth) * logoWidth;
+          doc.addImage(logoImg, 'PNG', (pageWidth - logoWidth) / 2, yPosition, logoWidth, logoHeight);
+          yPosition += logoHeight + 5;
         } else {
-          logoImg.onload = resolve;
-          logoImg.onerror = () => {
-            console.warn('Logo image failed to load, using text fallback');
-            resolve(); // Resolve anyway to continue with fallback
-          };
+          // Fallback to text if image not loaded
+          doc.setTextColor(31, 41, 55); // gray-800
+          doc.setFontSize(20);
+          doc.text('TAJALLI', pageWidth / 2, yPosition, { align: 'center' });
+          yPosition += 8;
         }
-      });
-      
-      // Add logo to PDF if loaded successfully
-      if (logoImg.naturalWidth > 0) {
-        const logoWidth = 50;
-        const logoHeight = (logoImg.naturalHeight / logoImg.naturalWidth) * logoWidth;
-        doc.addImage(logoImg, 'PNG', (pageWidth - logoWidth) / 2, yPosition, logoWidth, logoHeight);
-        yPosition += logoHeight + 5;
-      } else {
-        // Fallback to text if image not loaded
+      } catch (error) {
+        console.error('Error adding logo to PDF:', error);
+        // Fallback to text if image fails
         doc.setTextColor(31, 41, 55); // gray-800
         doc.setFontSize(20);
         doc.text('TAJALLI', pageWidth / 2, yPosition, { align: 'center' });
         yPosition += 8;
       }
-    } catch (error) {
-      console.error('Error adding logo to PDF:', error);
-      // Fallback to text if image fails
+
       doc.setTextColor(31, 41, 55); // gray-800
-      doc.setFontSize(20);
-      doc.text('TAJALLI', pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 8;
-    }
+      doc.setFontSize(8);
+      doc.text('GSTIN: 07AAXCS0618K1ZT', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 4;
+      doc.text('FASSAI: 13323999001107', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 4;
+      doc.text('16-B Jangpura Road, Bhogal, Jangpura, New Delhi', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 4;
+      doc.text('📞 +91-XXXXXXXXXX', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 6;
 
-    doc.setTextColor(31, 41, 55); // gray-800
-    doc.setFontSize(8);
-    doc.text('GSTIN: 07AAXCS0618K1ZT', pageWidth / 2, yPosition, { align: 'center' });
-    yPosition += 4;
-    doc.text('FASSAI: 13323999001107', pageWidth / 2, yPosition, { align: 'center' });
-    yPosition += 4;
-    doc.text('16-B Jangpura Road, Bhogal, Jangpura, New Delhi', pageWidth / 2, yPosition, { align: 'center' });
-    yPosition += 4;
-    doc.text('📞 +91-XXXXXXXXXX', pageWidth / 2, yPosition, { align: 'center' });
-    yPosition += 6;
+      // Line separator
+      doc.setLineWidth(0.5);
+      doc.line(margin, yPosition, pageWidth - margin, yPosition);
+      yPosition += 5;
 
-    // Line separator
-    doc.setLineWidth(0.5);
-    doc.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 5;
+      // Receipt Info
+      doc.setTextColor(31, 41, 55); // gray-800
+      doc.setFontSize(9);
+      doc.text(`Receipt: ${saleData.receiptNumber}`, margin, yPosition);
+      yPosition += 5;
+      doc.text(`Date: ${formatDate(saleData.date)}`, margin, yPosition);
+      yPosition += 6;
 
-    // Receipt Info
-    doc.setTextColor(31, 41, 55); // gray-800
-    doc.setFontSize(9);
-    doc.text(`Receipt: ${saleData.receiptNumber}`, margin, yPosition);
-    yPosition += 5;
-    doc.text(`Date: ${formatDate(saleData.date)}`, margin, yPosition);
-    yPosition += 6;
+      // Customer Details
+      doc.setTextColor(31, 41, 55); // gray-800
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'bold');
+      doc.text('Customer Details:', margin, yPosition);
+      yPosition += 5;
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(9);
+      doc.text(`Name: ${saleData.customerName}`, margin, yPosition);
+      yPosition += 5;
+      doc.text(`Mobile: ${saleData.customerMobile}`, margin, yPosition);
+      yPosition += 5;
+      const addressLines = doc.splitTextToSize(`Address: ${saleData.customerAddress}`, maxWidth);
+      doc.text(addressLines, margin, yPosition);
+      yPosition += addressLines.length * 5 + 3;
 
-    // Customer Details
-    doc.setTextColor(31, 41, 55); // gray-800
-    doc.setFontSize(10);
-    doc.setFont(undefined, 'bold');
-    doc.text('Customer Details:', margin, yPosition);
-    yPosition += 5;
-    doc.setFont(undefined, 'normal');
-    doc.setFontSize(9);
-    doc.text(`Name: ${saleData.customerName}`, margin, yPosition);
-    yPosition += 5;
-    doc.text(`Mobile: ${saleData.customerMobile}`, margin, yPosition);
-    yPosition += 5;
-    const addressLines = doc.splitTextToSize(`Address: ${saleData.customerAddress}`, maxWidth);
-    doc.text(addressLines, margin, yPosition);
-    yPosition += addressLines.length * 5 + 3;
+      // Line separator
+      doc.line(margin, yPosition, pageWidth - margin, yPosition);
+      yPosition += 5;
 
-    // Line separator
-    doc.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 5;
-
-    // Items Header
-    doc.setTextColor(31, 41, 55); // gray-800
-    doc.setFontSize(9);
-    doc.setFont(undefined, 'bold');
-    doc.text('Item', margin, yPosition);
-    doc.text('Price', pageWidth - margin, yPosition, { align: 'right' });
-    yPosition += 5;
-    doc.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 3;
-
-    // Items
-    doc.setFont(undefined, 'normal');
-    saleData.items.forEach((item) => {
-      // Check if we need a new page
-      if (yPosition > doc.internal.pageSize.getHeight() - 30) {
-        doc.addPage();
-        yPosition = 10;
-      }
-
+      // Items Header
       doc.setTextColor(31, 41, 55); // gray-800
       doc.setFontSize(9);
       doc.setFont(undefined, 'bold');
-      const itemNameLines = doc.splitTextToSize(item.name, maxWidth - 50);
-      doc.text(itemNameLines, margin, yPosition);
-      
-      const qtyText = item.unit === 'kg' 
-        ? `${item.quantity / 1000} kg × ${formatCurrency(item.price)}`
-        : `${item.quantity} pcs × ${formatCurrency(item.price)}`;
+      doc.text('Item', margin, yPosition);
+      doc.text('Price', pageWidth - margin, yPosition, { align: 'right' });
+      yPosition += 5;
+      doc.line(margin, yPosition, pageWidth - margin, yPosition);
+      yPosition += 3;
+
+      // Items
       doc.setFont(undefined, 'normal');
-      doc.setFontSize(8);
-      doc.text(qtyText, margin, yPosition + (itemNameLines.length * 4));
-      
+      saleData.items.forEach((item) => {
+        // Check if we need a new page
+        if (yPosition > doc.internal.pageSize.getHeight() - 30) {
+          doc.addPage();
+          yPosition = 10;
+        }
+
+        doc.setTextColor(31, 41, 55); // gray-800
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'bold');
+        const itemNameLines = doc.splitTextToSize(item.name, maxWidth - 50);
+        doc.text(itemNameLines, margin, yPosition);
+        
+        const qtyText = item.unit === 'kg' 
+          ? `${item.quantity / 1000} kg × ${formatCurrency(item.price)}`
+          : `${item.quantity} pcs × ${formatCurrency(item.price)}`;
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(8);
+        doc.text(qtyText, margin, yPosition + (itemNameLines.length * 4));
+        
+        doc.setFontSize(9);
+        doc.text(formatCurrency(item.total), pageWidth - margin, yPosition, { align: 'right' });
+        
+        yPosition += Math.max(itemNameLines.length * 4 + 4, 8) + 2;
+      });
+
+      yPosition += 3;
+      doc.line(margin, yPosition, pageWidth - margin, yPosition);
+      yPosition += 5;
+
+      // Totals
+      doc.setTextColor(31, 41, 55); // gray-800
       doc.setFontSize(9);
-      doc.text(formatCurrency(item.total), pageWidth - margin, yPosition, { align: 'right' });
+      doc.text(`Subtotal: ${formatCurrency(saleData.subtotal)}`, pageWidth - margin, yPosition, { align: 'right' });
+      yPosition += 6;
       
-      yPosition += Math.max(itemNameLines.length * 4 + 4, 8) + 2;
-    });
+      doc.setFontSize(11);
+      doc.setFont(undefined, 'bold');
+      doc.line(margin, yPosition, pageWidth - margin, yPosition);
+      yPosition += 5;
+      doc.text(`Total: ${formatCurrency(saleData.total)}`, pageWidth - margin, yPosition, { align: 'right' });
+      yPosition += 6;
+      
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(9);
+      doc.text(`Payment Mode: ${saleData.paymentMethod}`, margin, yPosition);
+      yPosition += 8;
 
-    yPosition += 3;
-    doc.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 5;
+      // Footer
+      doc.setTextColor(31, 41, 55); // gray-800
+      doc.line(margin, yPosition, pageWidth - margin, yPosition);
+      yPosition += 5;
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'bold');
+      doc.text('Thank You!', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 5;
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(9);
+      doc.text('Visit Again 😊', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 5;
+      doc.setFontSize(8);
+      doc.text('www.tajalli.com', pageWidth / 2, yPosition, { align: 'center' });
 
-    // Totals
-    doc.setTextColor(31, 41, 55); // gray-800
-    doc.setFontSize(9);
-    doc.text(`Subtotal: ${formatCurrency(saleData.subtotal)}`, pageWidth - margin, yPosition, { align: 'right' });
-    yPosition += 6;
-    
-    doc.setFontSize(11);
-    doc.setFont(undefined, 'bold');
-    doc.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 5;
-    doc.text(`Total: ${formatCurrency(saleData.total)}`, pageWidth - margin, yPosition, { align: 'right' });
-    yPosition += 6;
-    
-    doc.setFont(undefined, 'normal');
-    doc.setFontSize(9);
-    doc.text(`Payment Mode: ${saleData.paymentMethod}`, margin, yPosition);
-    yPosition += 8;
-
-    // Footer
-    doc.setTextColor(31, 41, 55); // gray-800
-    doc.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 5;
-    doc.setFontSize(10);
-    doc.setFont(undefined, 'bold');
-    doc.text('Thank You!', pageWidth / 2, yPosition, { align: 'center' });
-    yPosition += 5;
-    doc.setFont(undefined, 'normal');
-    doc.setFontSize(9);
-    doc.text('Visit Again 😊', pageWidth / 2, yPosition, { align: 'center' });
-    yPosition += 5;
-    doc.setFontSize(8);
-    doc.text('www.tajalli.com', pageWidth / 2, yPosition, { align: 'center' });
-
-    // Save PDF
-    const fileName = `Receipt_${saleData.receiptNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(fileName);
+      // Save PDF
+      const fileName = `Receipt_${saleData.receiptNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try using the Print option instead.');
+    }
   };
 
   return (
