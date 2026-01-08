@@ -118,7 +118,6 @@ export default function AdminPOS() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array - only run once on mount
-  }, [fetchProducts]);
 
   // Handle cart updates from scanner - separate effect that doesn't depend on products
   useEffect(() => {

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Layout from '@/components/Layout';
 import { authenticatedFetch } from '@/lib/api-client';
+import { hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
 import { PageLoader } from '@/components/Loader';
 import { getTodayIST } from '@/lib/date-utils';
 
@@ -10,10 +11,13 @@ export default function UserSales() {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userInfo, setUserInfo] = useState(null);
+  const [userPermissions, setUserPermissions] = useState([]);
+  const [permissionsLoading, setPermissionsLoading] = useState(true);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
+    fetchUserPermissions();
     fetchUserInfo();
     fetchSales();
     // Set default date range to today (IST)
@@ -21,6 +25,21 @@ export default function UserSales() {
     setStartDate(today);
     setEndDate(today);
   }, []);
+
+  const fetchUserPermissions = async () => {
+    try {
+      setPermissionsLoading(true);
+      const response = await authenticatedFetch('/api/auth/me');
+      if (response.ok) {
+        const data = await response.json();
+        setUserPermissions(data.user?.permissions || []);
+      }
+    } catch (error) {
+      console.error('Error fetching user permissions:', error);
+    } finally {
+      setPermissionsLoading(false);
+    }
+  };
 
   // Filter sales by date range
   const filteredSales = useMemo(() => {
@@ -62,6 +81,31 @@ export default function UserSales() {
       console.error('Error fetching user info:', error);
     }
   };
+
+  const canRead = hasPermission(userPermissions, MODULES.SALES, OPERATIONS.READ);
+
+  if (permissionsLoading) {
+    return (
+      <Layout userRole="user">
+        <div className="px-4 py-6 sm:px-0">
+          <PageLoader message="Loading..." />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!canRead) {
+    return (
+      <Layout userRole="user">
+        <div className="px-4 py-6 sm:px-0">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <h2 className="text-lg font-semibold text-red-900 mb-2">403 - Unauthorized Access</h2>
+            <p className="text-red-800">You do not have permission to view sales. Please contact your administrator if you need access.</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   const fetchSales = async () => {
     try {
