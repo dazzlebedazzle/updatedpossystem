@@ -97,6 +97,7 @@ const categoryIcons = {
 
 export default function UserPOS() {
   const [products, setProducts] = useState([]);
+  const [allProducts, setAllProducts] = useState([]); // Store all products for category calculation
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
@@ -188,37 +189,18 @@ export default function UserPOS() {
         throw new Error('Invalid JSON response from server');
       }
       
-      const allProducts = data.products || [];
+      const fetchedProducts = data.products || [];
       
       // Process all products
-      const uniqueProducts = processProducts(allProducts);
+      const uniqueProducts = processProducts(fetchedProducts);
       
-      // Show first batch immediately for fast initial render
-      const initialBatch = uniqueProducts.slice(0, INITIAL_BATCH_SIZE);
-      setProducts(initialBatch);
+      // Store all products immediately for category calculation and filtering
+      setAllProducts(uniqueProducts);
+      
+      // Load all products immediately to ensure complete categories and product list
+      setProducts(uniqueProducts);
       setLoading(false);
       setInitialLoadComplete(true);
-      
-      // Load remaining products in background using requestIdleCallback or setTimeout
-      if (uniqueProducts.length > INITIAL_BATCH_SIZE) {
-        // Use requestIdleCallback if available, otherwise setTimeout
-        if (typeof window !== 'undefined' && window.requestIdleCallback) {
-          window.requestIdleCallback(() => {
-            if (isMounted) {
-              setProducts(uniqueProducts);
-            }
-          }, { timeout: 1000 });
-        } else if (typeof window !== 'undefined') {
-          // Fallback: load after a short delay to allow initial render
-          setTimeout(() => {
-            if (isMounted) {
-              setProducts(uniqueProducts);
-            }
-          }, 100);
-        }
-      } else {
-        setProducts(uniqueProducts);
-      }
     } catch (error) {
       console.error('Error fetching products:', error);
       setError(error.message || 'Failed to load products. Please try again.');
@@ -383,6 +365,7 @@ export default function UserPOS() {
   }, [initialLoadComplete, products.length, isMounted]); // Only run when initial load is complete
 
   // Memoize unique products to avoid recalculating on every render
+  // Use allProducts for category calculation, but products for display
   const uniqueProducts = useMemo(() => {
     const seenKeys = new Set();
     return products.filter(product => {
@@ -397,12 +380,16 @@ export default function UserPOS() {
     });
   }, [products]);
 
-  // Memoize categories calculation
+  // Memoize categories calculation - use allProducts to show complete categories
   const categories = useMemo(() => {
-    if (uniqueProducts.length === 0) return [{ name: 'All', count: 0 }];
+    // Use allProducts for category calculation to show all categories
+    const productsForCategories = allProducts.length > 0 ? allProducts : uniqueProducts;
+    
+    if (productsForCategories.length === 0) return [{ name: 'All', count: 0 }];
     
     const categoryMap = {};
-    uniqueProducts.forEach(product => {
+    productsForCategories.forEach(product => {
+      if (!product) return;
       const categoryName = product.category || 'general';
       if (!categoryMap[categoryName]) {
         categoryMap[categoryName] = {
@@ -425,9 +412,9 @@ export default function UserPOS() {
       };
     });
     
-    const allCategory = { name: 'All', count: uniqueProducts.length };
+    const allCategory = { name: 'All', count: productsForCategories.length };
     return [allCategory, ...categoriesWithCount];
-  }, [uniqueProducts]);
+  }, [allProducts, uniqueProducts]);
 
   // Memoize filtered products with debounced search
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -440,9 +427,12 @@ export default function UserPOS() {
   }, [searchTerm]);
 
   // Pre-compute category filter for faster filtering
+  // Use allProducts for filtering to ensure all products are available
   const categoryFilterMap = useMemo(() => {
     const map = new Map();
-    uniqueProducts.forEach(product => {
+    const productsForFiltering = allProducts.length > 0 ? allProducts : uniqueProducts;
+    
+    productsForFiltering.forEach(product => {
       if (!product) return;
       const category = (product.category || 'general').toLowerCase();
       if (!map.has(category)) {
@@ -451,12 +441,15 @@ export default function UserPOS() {
       map.get(category).push(product);
     });
     return map;
-  }, [uniqueProducts]);
+  }, [allProducts, uniqueProducts]);
 
   const filteredProducts = useMemo(() => {
+    // Use allProducts for filtering to show all products, not just the initial batch
+    const productsForFiltering = allProducts.length > 0 ? allProducts : uniqueProducts;
+    
     // Fast path: All products, no search
     if (!debouncedSearchTerm && selectedCategory === 'All') {
-      return uniqueProducts;
+      return productsForFiltering;
     }
     
     // Fast path: Category filter only (use pre-computed map)
@@ -471,7 +464,7 @@ export default function UserPOS() {
     
     // Start with category-filtered products if category is selected
     const categoryProducts = selectedCategory === 'All' 
-      ? uniqueProducts 
+      ? productsForFiltering 
       : (categoryFilterMap.get(categoryLower) || []);
     
     // Then apply search filter
@@ -483,7 +476,7 @@ export default function UserPOS() {
       const productEAN = (product.EAN_code || '').toString().toLowerCase();
       return productName.includes(searchLower) || productEAN.includes(searchLower);
     });
-  }, [uniqueProducts, debouncedSearchTerm, selectedCategory, categoryFilterMap]);
+  }, [allProducts, uniqueProducts, debouncedSearchTerm, selectedCategory, categoryFilterMap]);
 
   const addToCart = useCallback((product) => {
     const availableStock = (product.qty || 0) - (product.qty_sold || 0);
@@ -565,7 +558,8 @@ export default function UserPOS() {
       const cartItem = prevCart.find(item => item.productId === productId);
       if (!cartItem) return prevCart;
       
-      const product = uniqueProducts.find(p => (p._id || p.id) === productId);
+      // Search in allProducts first, then fallback to uniqueProducts
+      const product = (allProducts.length > 0 ? allProducts : uniqueProducts).find(p => (p._id || p.id) === productId);
       if (product) {
         const availableStock = (product.qty || 0) - (product.qty_sold || 0);
         const unit = cartItem.unit || 'kg';
