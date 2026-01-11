@@ -549,23 +549,22 @@ export default function UserPOS() {
   }, []);
 
   const updateQuantity = useCallback((productId, quantity) => {
-    if (quantity <= 0) {
-      removeFromCart(productId);
-      return;
-    }
-    
+    // Never remove items from cart - allow 0 quantity to stay in cart
     setCart(prevCart => {
       const cartItem = prevCart.find(item => item.productId === productId);
       if (!cartItem) return prevCart;
       
+      // Allow 0 quantity - don't remove from cart
+      const finalQuantity = quantity < 0 ? 0 : quantity;
+      
       // Search in allProducts first, then fallback to uniqueProducts
       const product = (allProducts.length > 0 ? allProducts : uniqueProducts).find(p => (p._id || p.id) === productId);
-      if (product) {
+      if (product && finalQuantity > 0) {
         const availableStock = (product.qty || 0) - (product.qty_sold || 0);
         const unit = cartItem.unit || 'kg';
         
         // Convert quantity to same unit as stock for comparison
-        const quantityInStockUnit = unit === 'kg' ? quantity / 1000 : quantity;
+        const quantityInStockUnit = unit === 'kg' ? finalQuantity / 1000 : finalQuantity;
         
         if (quantityInStockUnit > availableStock) {
           // Defer toast call to avoid state update during render
@@ -578,11 +577,11 @@ export default function UserPOS() {
       
       return prevCart.map(item =>
         item.productId === productId
-          ? { ...item, quantity }
+          ? { ...item, quantity: finalQuantity }
           : item
       );
     });
-  }, [uniqueProducts, removeFromCart]);
+  }, [uniqueProducts, allProducts]);
 
   const getTotal = useMemo(() => {
     return cart.reduce((sum, item) => {
@@ -845,6 +844,76 @@ const ProductCard = memo(({ product, addToCart, getProductImage }) => {
 
 ProductCard.displayName = 'ProductCard';
 
+// Quantity Input Component with local state to allow empty values during editing
+const QuantityInput = memo(({ productId, quantity, unit, updateQuantity, className }) => {
+  const [localValue, setLocalValue] = useState(String(quantity));
+  const inputRef = useRef(null);
+  
+  // Get default minimum quantity based on unit
+  const getMinQuantity = () => {
+    return unit === 'kg' ? 100 : 1;
+  };
+
+  // Sync local value when quantity changes from outside (e.g., +/- buttons)
+  useEffect(() => {
+    setLocalValue(String(quantity));
+  }, [quantity]);
+
+  const handleChange = (e) => {
+    const inputValue = e.target.value;
+    setLocalValue(inputValue); // Allow empty string in local state
+    
+    // Only update cart if we have a valid number
+    if (inputValue !== '') {
+      const value = parseInt(inputValue);
+      if (!isNaN(value) && value >= 0) {
+        updateQuantity(productId, value);
+      }
+    }
+  };
+
+  const handleBlur = (e) => {
+    const inputValue = e.target.value;
+    const minQty = getMinQuantity();
+    
+    // If field is empty or invalid on blur, set to default minimum quantity (keep in cart)
+    if (inputValue === '' || isNaN(parseInt(inputValue))) {
+      setLocalValue(String(minQty));
+      updateQuantity(productId, minQty);
+      return;
+    }
+    
+    const value = parseInt(inputValue);
+    
+    // If value is less than 0, set to minimum quantity (keep in cart)
+    if (value < 0) {
+      setLocalValue(String(minQty));
+      updateQuantity(productId, minQty);
+      return;
+    }
+    
+    // Allow 0 quantity - don't remove from cart
+    // Update the cart with the value (can be 0 or positive)
+    if (value !== quantity) {
+      updateQuantity(productId, value);
+    }
+  };
+
+  return (
+    <input
+      ref={inputRef}
+      type="number"
+      value={localValue}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      className={className}
+      min="0"
+    />
+  );
+});
+
+QuantityInput.displayName = 'QuantityInput';
+
 function POSContent({ 
   products, 
   cart, 
@@ -1062,17 +1131,12 @@ function POSContent({
                             -
                           </button>
                           <div className="flex items-center">
-                            <input
-                              type="number"
-                              value={item.unit === 'kg' ? item.quantity : item.quantity}
-                              onChange={(e) => {
-                                const value = parseInt(e.target.value) || 0;
-                                if (value >= 0) {
-                                  updateQuantity(item.productId, value);
-                                }
-                              }}
+                            <QuantityInput
+                              productId={item.productId}
+                              quantity={item.quantity}
+                              unit={item.unit}
+                              updateQuantity={updateQuantity}
                               className="w-14 md:w-16 text-xs md:text-sm text-center font-medium text-gray-800 border border-gray-200 rounded px-1 py-1 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                              min="0"
                             />
                             <span className="text-[10px] md:text-xs ml-1 text-gray-600">
                               {item.unit === 'kg' ? 'g' : 'pcs'}
@@ -1174,17 +1238,12 @@ function POSContent({
                                 -
                               </button>
                               <div className="flex items-center">
-                                <input
-                                  type="number"
-                                  value={item.unit === 'kg' ? item.quantity : item.quantity}
-                                  onChange={(e) => {
-                                    const value = parseInt(e.target.value) || 0;
-                                    if (value >= 0) {
-                                      updateQuantity(item.productId, value);
-                                    }
-                                  }}
+                                <QuantityInput
+                                  productId={item.productId}
+                                  quantity={item.quantity}
+                                  unit={item.unit}
+                                  updateQuantity={updateQuantity}
                                   className="w-16 sm:w-20 text-sm sm:text-base text-center font-medium text-gray-800 border border-gray-200 rounded px-1.5 py-1.5 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                                  min="0"
                                 />
                                 <span className="text-xs sm:text-sm ml-1.5 text-gray-600">
                                   {item.unit === 'kg' ? 'g' : 'pcs'}
