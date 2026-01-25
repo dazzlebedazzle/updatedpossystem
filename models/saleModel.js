@@ -13,7 +13,7 @@ const saleItemSchema = new mongoose.Schema({
   },
   unit: {
     type: String,
-    enum: ['kg', 'packets'],
+    enum: ['kg', 'packets', 'pieces'],
     default: 'kg'
   },
   price: {

@@ -21,7 +21,7 @@ const nextConfig: NextConfig = {
   
   // Optimize bundle size
   experimental: {
-    optimizePackageImports: ['recharts', 'react-spinners', '@zxing/library', 'html5-qrcode'],
+    optimizePackageImports: ['recharts', '@zxing/library', 'html5-qrcode'],
   },
   
   // Webpack optimizations

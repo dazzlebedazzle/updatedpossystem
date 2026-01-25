@@ -170,7 +170,13 @@ export async function POST(request) {
       
       // Convert item quantity to stock unit for comparison
       const unit = item.unit || product.unit || 'kg';
-      const itemQuantityInStockUnit = unit === 'kg' ? item.quantity / 1000 : item.quantity;
+      // Handle unit conversions: kg is in grams, packets and pieces are count
+      let itemQuantityInStockUnit;
+      if (unit === 'kg') {
+        itemQuantityInStockUnit = item.quantity / 1000; // Convert grams to kg
+      } else {
+        itemQuantityInStockUnit = item.quantity; // packets and pieces are already in count
+      }
       
       if (availableStock < itemQuantityInStockUnit) {
         return NextResponse.json(
@@ -180,7 +186,12 @@ export async function POST(request) {
       }
       
       // Calculate price based on unit
-      const qtyInUnit = unit === 'kg' ? item.quantity / 1000 : item.quantity;
+      let qtyInUnit;
+      if (unit === 'kg') {
+        qtyInUnit = item.quantity / 1000; // Convert grams to kg
+      } else {
+        qtyInUnit = item.quantity; // packets and pieces are already in count
+      }
       total += (product.price || 0) * qtyInUnit;
       
       saleItems.push({
@@ -213,7 +224,12 @@ export async function POST(request) {
         const currentQtySold = productObj.qty_sold || 0;
         // Convert quantity to stock unit before updating
         const unit = item.unit || productObj.unit || 'kg';
-        const quantityInStockUnit = unit === 'kg' ? item.quantity / 1000 : item.quantity;
+        let quantityInStockUnit;
+        if (unit === 'kg') {
+          quantityInStockUnit = item.quantity / 1000; // Convert grams to kg
+        } else {
+          quantityInStockUnit = item.quantity; // packets and pieces are already in count
+        }
         
         // Update product qty_sold
         await productDB.update(item.productId, {
