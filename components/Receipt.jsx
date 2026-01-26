@@ -355,57 +355,59 @@ export default function Receipt({ saleData, onClose }) {
           yPosition += logoHeight + 2; // Reduced spacing from 5 to 2
         } else {
           // Fallback to text if image not loaded
-          doc.setTextColor(31, 41, 55); // gray-800
-          doc.setFontSize(16); // Reduced from 20 to 16
+          doc.setTextColor(0, 0, 0); // Pure black for better visibility
+          doc.setFontSize(18); // Increased from 16 to 18 for visibility
           doc.text('TAJALLI', pageWidth / 2, yPosition, { align: 'center' });
-          yPosition += 5; // Reduced from 8 to 5
+          yPosition += 6; // Increased from 5 to 6
         }
       } catch (error) {
         console.error('Error adding logo to PDF:', error);
         // Fallback to text if image fails
-        doc.setTextColor(31, 41, 55); // gray-800
-        doc.setFontSize(16); // Reduced from 20 to 16
+        doc.setTextColor(0, 0, 0); // Pure black for better visibility
+        doc.setFontSize(18); // Increased from 16 to 18 for visibility
         doc.text('TAJALLI', pageWidth / 2, yPosition, { align: 'center' });
-        yPosition += 5; // Reduced from 8 to 5
+        yPosition += 6; // Increased from 5 to 6
       }
 
-      doc.setTextColor(31, 41, 55); // gray-800
-      doc.setFontSize(7); // Reduced from 8 to 7
+      doc.setTextColor(0, 0, 0); // Pure black for better visibility
+      doc.setFontSize(9); // Increased from 7 to 9
       doc.text('GSTIN: 07AAXCS0618K1ZT', pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 3; // Reduced from 4 to 3
+      yPosition += 4; // Increased from 3 to 4
       doc.text('FASSAI: 13323999001107', pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 3; // Reduced from 4 to 3
-      doc.text('16-B Jangpura Road, Bhogal, Jangpura, New Delhi', pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 3; // Reduced from 4 to 3
-      doc.text('📞 +91-XXXXXXXXXX', pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 4; // Reduced from 6 to 4
+      yPosition += 4; // Increased from 3 to 4
+      doc.text('MBD Neopolis Mall, Ferozepur Road', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 4; // Increased from 3 to 4
+      doc.text('Rajguru Nagar Extension, Ludhiana, Punjab 141012', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 4; // Increased from 3 to 4
+      doc.text('📞 0161-430-5000', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 5; // Increased from 4 to 5
 
       // Line separator
-      doc.setLineWidth(0.5);
+      doc.setLineWidth(1); // Increased from 0.5 to 1 for visibility
       doc.line(margin, yPosition, pageWidth - margin, yPosition);
-      yPosition += 3; // Reduced from 5 to 3
+      yPosition += 4; // Increased from 3 to 4
 
       // Receipt Info
-      doc.setTextColor(31, 41, 55); // gray-800
-      doc.setFontSize(8); // Reduced from 9 to 8
+      doc.setTextColor(0, 0, 0); // Pure black for better visibility
+      doc.setFontSize(9); // Increased from 8 to 9
       doc.text(`Receipt: ${saleData.receiptNumber}`, margin, yPosition);
-      yPosition += 3; // Reduced from 5 to 3
+      yPosition += 4; // Increased from 3 to 4
       doc.text(`Date: ${formatDate(saleData.date)}`, margin, yPosition);
-      yPosition += 4; // Reduced from 6 to 4
+      yPosition += 4; // Increased from 4 to 4
 
       // Line separator
       doc.line(margin, yPosition, pageWidth - margin, yPosition);
-      yPosition += 3; // Reduced from 5 to 3
+      yPosition += 4; // Increased from 3 to 4
 
       // Items Header
-      doc.setTextColor(31, 41, 55); // gray-800
-      doc.setFontSize(8); // Reduced from 9 to 8
+      doc.setTextColor(0, 0, 0); // Pure black for better visibility
+      doc.setFontSize(9); // Increased from 8 to 9
       doc.setFont(undefined, 'bold');
       doc.text('Item', margin, yPosition);
       doc.text('Price', pageWidth - margin, yPosition, { align: 'right' });
-      yPosition += 3; // Reduced from 5 to 3
+      yPosition += 4; // Increased from 3 to 4
       doc.line(margin, yPosition, pageWidth - margin, yPosition);
-      yPosition += 2; // Reduced from 3 to 2
+      yPosition += 3; // Increased from 2 to 3
 
       // Items
       doc.setFont(undefined, 'normal');
@@ -416,8 +418,8 @@ export default function Receipt({ saleData, onClose }) {
           yPosition = 10;
         }
 
-        doc.setTextColor(31, 41, 55); // gray-800
-        doc.setFontSize(8); // Reduced from 9 to 8
+        doc.setTextColor(0, 0, 0); // Pure black for better visibility
+        doc.setFontSize(9); // Increased from 8 to 9
         doc.setFont(undefined, 'bold');
         const itemNameLines = doc.splitTextToSize(item.name, maxWidth - 50);
         doc.text(itemNameLines, margin, yPosition);
@@ -426,50 +428,50 @@ export default function Receipt({ saleData, onClose }) {
           ? `${item.quantity / 1000} kg × ${formatCurrency(item.price)}`
           : `${item.quantity} pcs × ${formatCurrency(item.price)}`;
         doc.setFont(undefined, 'normal');
-        doc.setFontSize(7); // Reduced from 8 to 7
-        doc.text(qtyText, margin, yPosition + (itemNameLines.length * 3)); // Reduced from 4 to 3
+        doc.setFontSize(8); // Increased from 7 to 8
+        doc.text(qtyText, margin, yPosition + (itemNameLines.length * 4)); // Increased from 3 to 4
         
-        doc.setFontSize(8); // Reduced from 9 to 8
+        doc.setFontSize(9); // Increased from 8 to 9
         doc.text(formatCurrency(item.total), pageWidth - margin, yPosition, { align: 'right' });
         
-        yPosition += Math.max(itemNameLines.length * 3 + 2, 6) + 1; // Reduced spacing
+        yPosition += Math.max(itemNameLines.length * 4 + 2, 7) + 2; // Increased spacing
       });
 
-      yPosition += 2; // Reduced from 3 to 2
+      yPosition += 3; // Increased from 2 to 3
       doc.line(margin, yPosition, pageWidth - margin, yPosition);
-      yPosition += 3; // Reduced from 5 to 3
+      yPosition += 4; // Increased from 3 to 4
 
       // Totals
-      doc.setTextColor(31, 41, 55); // gray-800
-      doc.setFontSize(8); // Reduced from 9 to 8
+      doc.setTextColor(0, 0, 0); // Pure black for better visibility
+      doc.setFontSize(9); // Increased from 8 to 9
       doc.text(`Subtotal: ${formatCurrency(saleData.subtotal)}`, pageWidth - margin, yPosition, { align: 'right' });
-      yPosition += 3; // Reduced from 6 to 3
+      yPosition += 4; // Increased from 3 to 4
       
-      doc.setFontSize(10); // Reduced from 11 to 10
+      doc.setFontSize(11); // Increased from 10 to 11
       doc.setFont(undefined, 'bold');
       doc.line(margin, yPosition, pageWidth - margin, yPosition);
-      yPosition += 2; // Reduced from 5 to 2
+      yPosition += 3; // Increased from 2 to 3
       doc.text(`Total: ${formatCurrency(saleData.total)}`, pageWidth - margin, yPosition, { align: 'right' });
-      yPosition += 4; // Reduced from 6 to 4
+      yPosition += 5; // Increased from 4 to 5
       
       doc.setFont(undefined, 'normal');
-      doc.setFontSize(8); // Reduced from 9 to 8
+      doc.setFontSize(9); // Increased from 8 to 9
       doc.text(`Payment Mode: ${saleData.paymentMethod}`, margin, yPosition);
-      yPosition += 4; // Reduced from 8 to 4
+      yPosition += 5; // Increased from 4 to 5
 
       // Footer
-      doc.setTextColor(31, 41, 55); // gray-800
+      doc.setTextColor(0, 0, 0); // Pure black for better visibility
       doc.line(margin, yPosition, pageWidth - margin, yPosition);
-      yPosition += 3; // Reduced from 5 to 3
-      doc.setFontSize(9); // Reduced from 10 to 9
+      yPosition += 4; // Increased from 3 to 4
+      doc.setFontSize(10); // Increased from 9 to 10
       doc.setFont(undefined, 'bold');
       doc.text('Thank You!', pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 3; // Reduced from 5 to 3
+      yPosition += 4; // Increased from 3 to 4
       doc.setFont(undefined, 'normal');
-      doc.setFontSize(8); // Reduced from 9 to 8
+      doc.setFontSize(9); // Increased from 8 to 9
       doc.text('Visit Again 😊', pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 3; // Reduced from 5 to 3
-      doc.setFontSize(7); // Reduced from 8 to 7
+      yPosition += 4; // Increased from 3 to 4
+      doc.setFontSize(8); // Increased from 7 to 8
       doc.text('www.tajalli.com', pageWidth / 2, yPosition, { align: 'center' });
 
       // Save PDF
