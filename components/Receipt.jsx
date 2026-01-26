@@ -315,10 +315,16 @@ export default function Receipt({ saleData, onClose }) {
       // Dynamically import jsPDF only when needed to avoid webpack module loading issues
       const { default: jsPDF } = await import('jspdf');
       
-      const doc = new jsPDF();
+      // Create PDF with narrow width for receipt (80mm thermal paper)
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [80, 200] // 80mm wide, 200mm tall (adjusts automatically as content grows)
+      });
+      
       const pageWidth = doc.internal.pageSize.getWidth();
-      const margin = 10;
-      let yPosition = 10;
+      const margin = 5; // Reduced margin for narrow receipt
+      let yPosition = 8;
       const maxWidth = pageWidth - (margin * 2);
 
       // Header with Logo
@@ -386,22 +392,6 @@ export default function Receipt({ saleData, onClose }) {
       yPosition += 5;
       doc.text(`Date: ${formatDate(saleData.date)}`, margin, yPosition);
       yPosition += 6;
-
-      // Customer Details
-      doc.setTextColor(31, 41, 55); // gray-800
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'bold');
-      doc.text('Customer Details:', margin, yPosition);
-      yPosition += 5;
-      doc.setFont(undefined, 'normal');
-      doc.setFontSize(9);
-      doc.text(`Name: ${saleData.customerName}`, margin, yPosition);
-      yPosition += 5;
-      doc.text(`Mobile: ${saleData.customerMobile}`, margin, yPosition);
-      yPosition += 5;
-      const addressLines = doc.splitTextToSize(`Address: ${saleData.customerAddress}`, maxWidth);
-      doc.text(addressLines, margin, yPosition);
-      yPosition += addressLines.length * 5 + 3;
 
       // Line separator
       doc.line(margin, yPosition, pageWidth - margin, yPosition);
@@ -498,23 +488,24 @@ export default function Receipt({ saleData, onClose }) {
         onClick={onClose}
       >
         <div 
-          className="bg-white rounded-lg shadow-2xl max-w-md w-full"
+          className="bg-white rounded-lg shadow-2xl"
+          style={{ width: '320px', maxHeight: '85vh', overflowY: 'auto' }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Preview */}
-          <div className="p-6 max-h-[80vh] overflow-y-auto">
+          <div className="p-4">
             <div ref={receiptRef}>
-              <div className="receipt text-gray-800" style={{ maxWidth: '300px', margin: '0 auto', fontFamily: '"Courier New", monospace', color: '#1f2937' }}>
+              <div className="receipt text-gray-800" style={{ width: '280px', margin: '0 auto', fontFamily: '"Courier New", monospace', color: '#1f2937', fontSize: '12px' }}>
                 {/* Header */}
-                <div className="header" style={{ textAlign: 'center', borderBottom: '2px dashed #000', paddingBottom: '10px', marginBottom: '10px' }}>
-                  <div className="logo" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', width: '120px', height: '60px', margin: '0 auto 5px' }}>
-                    <Image src="/assets/category_images/logoo.png" alt="Tajalli Logo" width={120} height={60} style={{ objectFit: 'contain' }} />
+                <div className="header" style={{ textAlign: 'center', borderBottom: '2px dashed #000', paddingBottom: '8px', marginBottom: '8px' }}>
+                  <div className="logo" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', width: '80px', height: '40px', margin: '0 auto 3px' }}>
+                    <Image src="/assets/category_images/logoo.png" alt="Tajalli Logo" width={80} height={40} style={{ objectFit: 'contain' }} />
                   </div>
-                  <div className="company-name text-gray-800" style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '5px', color: '#1f2937' }}>TAJALLI</div>
-                  <div className="company-details text-gray-800" style={{ fontSize: '10px', lineHeight: '1.4', color: '#1f2937' }}>
+                  <div className="company-name text-gray-800" style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '3px', color: '#1f2937' }}>TAJALLI</div>
+                  <div className="company-details text-gray-800" style={{ fontSize: '9px', lineHeight: '1.3', color: '#1f2937' }}>
                     <div>GSTIN: 07AAXCS0618K1ZT</div>
                     <div>FASSAI: 13323999001107</div>
-                    <div style={{ marginTop: '5px' }}>16-B Jangpura Road</div>
+                    <div style={{ marginTop: '3px' }}>16-B Jangpura Road</div>
                     <div>Bhogal, Jangpura, New Delhi</div>
                     <div>📞 +91-XXXXXXXXXX</div>
                   </div>
@@ -529,23 +520,6 @@ export default function Receipt({ saleData, onClose }) {
                   <div className="info-row text-gray-800" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', margin: '3px 0', color: '#1f2937' }}>
                     <span>Date:</span>
                     <span>{formatDate(saleData.date)}</span>
-                  </div>
-                </div>
-
-                {/* Customer Details */}
-                <div className="section" style={{ borderTop: '1px dashed #ccc', paddingTop: '8px', marginTop: '8px' }}>
-                  <div className="section-title text-gray-800" style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '5px', color: '#1f2937' }}>Customer Details:</div>
-                  <div className="info-row text-gray-800" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', margin: '3px 0', color: '#1f2937' }}>
-                    <span>Name:</span>
-                    <span>{saleData.customerName}</span>
-                  </div>
-                  <div className="info-row text-gray-800" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', margin: '3px 0', color: '#1f2937' }}>
-                    <span>Mobile:</span>
-                    <span>{saleData.customerMobile}</span>
-                  </div>
-                  <div className="info-row text-gray-800" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', margin: '3px 0', color: '#1f2937' }}>
-                    <span>Address:</span>
-                    <span style={{ textAlign: 'right', maxWidth: '60%' }}>{saleData.customerAddress}</span>
                   </div>
                 </div>
 
