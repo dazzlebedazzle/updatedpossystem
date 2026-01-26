@@ -349,63 +349,63 @@ export default function Receipt({ saleData, onClose }) {
         
         // Add logo to PDF if loaded successfully
         if (logoImg.naturalWidth > 0) {
-          const logoWidth = 50;
+          const logoWidth = 35; // Reduced from 50 to 35mm
           const logoHeight = (logoImg.naturalHeight / logoImg.naturalWidth) * logoWidth;
           doc.addImage(logoImg, 'PNG', (pageWidth - logoWidth) / 2, yPosition, logoWidth, logoHeight);
-          yPosition += logoHeight + 5;
+          yPosition += logoHeight + 2; // Reduced spacing from 5 to 2
         } else {
           // Fallback to text if image not loaded
           doc.setTextColor(31, 41, 55); // gray-800
-          doc.setFontSize(20);
+          doc.setFontSize(16); // Reduced from 20 to 16
           doc.text('TAJALLI', pageWidth / 2, yPosition, { align: 'center' });
-          yPosition += 8;
+          yPosition += 5; // Reduced from 8 to 5
         }
       } catch (error) {
         console.error('Error adding logo to PDF:', error);
         // Fallback to text if image fails
         doc.setTextColor(31, 41, 55); // gray-800
-        doc.setFontSize(20);
+        doc.setFontSize(16); // Reduced from 20 to 16
         doc.text('TAJALLI', pageWidth / 2, yPosition, { align: 'center' });
-        yPosition += 8;
+        yPosition += 5; // Reduced from 8 to 5
       }
 
       doc.setTextColor(31, 41, 55); // gray-800
-      doc.setFontSize(8);
+      doc.setFontSize(7); // Reduced from 8 to 7
       doc.text('GSTIN: 07AAXCS0618K1ZT', pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 4;
+      yPosition += 3; // Reduced from 4 to 3
       doc.text('FASSAI: 13323999001107', pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 4;
+      yPosition += 3; // Reduced from 4 to 3
       doc.text('16-B Jangpura Road, Bhogal, Jangpura, New Delhi', pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 4;
+      yPosition += 3; // Reduced from 4 to 3
       doc.text('📞 +91-XXXXXXXXXX', pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 6;
+      yPosition += 4; // Reduced from 6 to 4
 
       // Line separator
       doc.setLineWidth(0.5);
       doc.line(margin, yPosition, pageWidth - margin, yPosition);
-      yPosition += 5;
+      yPosition += 3; // Reduced from 5 to 3
 
       // Receipt Info
       doc.setTextColor(31, 41, 55); // gray-800
-      doc.setFontSize(9);
+      doc.setFontSize(8); // Reduced from 9 to 8
       doc.text(`Receipt: ${saleData.receiptNumber}`, margin, yPosition);
-      yPosition += 5;
+      yPosition += 3; // Reduced from 5 to 3
       doc.text(`Date: ${formatDate(saleData.date)}`, margin, yPosition);
-      yPosition += 6;
+      yPosition += 4; // Reduced from 6 to 4
 
       // Line separator
       doc.line(margin, yPosition, pageWidth - margin, yPosition);
-      yPosition += 5;
+      yPosition += 3; // Reduced from 5 to 3
 
       // Items Header
       doc.setTextColor(31, 41, 55); // gray-800
-      doc.setFontSize(9);
+      doc.setFontSize(8); // Reduced from 9 to 8
       doc.setFont(undefined, 'bold');
       doc.text('Item', margin, yPosition);
       doc.text('Price', pageWidth - margin, yPosition, { align: 'right' });
-      yPosition += 5;
+      yPosition += 3; // Reduced from 5 to 3
       doc.line(margin, yPosition, pageWidth - margin, yPosition);
-      yPosition += 3;
+      yPosition += 2; // Reduced from 3 to 2
 
       // Items
       doc.setFont(undefined, 'normal');
@@ -417,7 +417,7 @@ export default function Receipt({ saleData, onClose }) {
         }
 
         doc.setTextColor(31, 41, 55); // gray-800
-        doc.setFontSize(9);
+        doc.setFontSize(8); // Reduced from 9 to 8
         doc.setFont(undefined, 'bold');
         const itemNameLines = doc.splitTextToSize(item.name, maxWidth - 50);
         doc.text(itemNameLines, margin, yPosition);
@@ -426,50 +426,50 @@ export default function Receipt({ saleData, onClose }) {
           ? `${item.quantity / 1000} kg × ${formatCurrency(item.price)}`
           : `${item.quantity} pcs × ${formatCurrency(item.price)}`;
         doc.setFont(undefined, 'normal');
-        doc.setFontSize(8);
-        doc.text(qtyText, margin, yPosition + (itemNameLines.length * 4));
+        doc.setFontSize(7); // Reduced from 8 to 7
+        doc.text(qtyText, margin, yPosition + (itemNameLines.length * 3)); // Reduced from 4 to 3
         
-        doc.setFontSize(9);
+        doc.setFontSize(8); // Reduced from 9 to 8
         doc.text(formatCurrency(item.total), pageWidth - margin, yPosition, { align: 'right' });
         
-        yPosition += Math.max(itemNameLines.length * 4 + 4, 8) + 2;
+        yPosition += Math.max(itemNameLines.length * 3 + 2, 6) + 1; // Reduced spacing
       });
 
-      yPosition += 3;
+      yPosition += 2; // Reduced from 3 to 2
       doc.line(margin, yPosition, pageWidth - margin, yPosition);
-      yPosition += 5;
+      yPosition += 3; // Reduced from 5 to 3
 
       // Totals
       doc.setTextColor(31, 41, 55); // gray-800
-      doc.setFontSize(9);
+      doc.setFontSize(8); // Reduced from 9 to 8
       doc.text(`Subtotal: ${formatCurrency(saleData.subtotal)}`, pageWidth - margin, yPosition, { align: 'right' });
-      yPosition += 6;
+      yPosition += 3; // Reduced from 6 to 3
       
-      doc.setFontSize(11);
+      doc.setFontSize(10); // Reduced from 11 to 10
       doc.setFont(undefined, 'bold');
       doc.line(margin, yPosition, pageWidth - margin, yPosition);
-      yPosition += 5;
+      yPosition += 2; // Reduced from 5 to 2
       doc.text(`Total: ${formatCurrency(saleData.total)}`, pageWidth - margin, yPosition, { align: 'right' });
-      yPosition += 6;
+      yPosition += 4; // Reduced from 6 to 4
       
       doc.setFont(undefined, 'normal');
-      doc.setFontSize(9);
+      doc.setFontSize(8); // Reduced from 9 to 8
       doc.text(`Payment Mode: ${saleData.paymentMethod}`, margin, yPosition);
-      yPosition += 8;
+      yPosition += 4; // Reduced from 8 to 4
 
       // Footer
       doc.setTextColor(31, 41, 55); // gray-800
       doc.line(margin, yPosition, pageWidth - margin, yPosition);
-      yPosition += 5;
-      doc.setFontSize(10);
+      yPosition += 3; // Reduced from 5 to 3
+      doc.setFontSize(9); // Reduced from 10 to 9
       doc.setFont(undefined, 'bold');
       doc.text('Thank You!', pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 5;
+      yPosition += 3; // Reduced from 5 to 3
       doc.setFont(undefined, 'normal');
-      doc.setFontSize(9);
+      doc.setFontSize(8); // Reduced from 9 to 8
       doc.text('Visit Again 😊', pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 5;
-      doc.setFontSize(8);
+      yPosition += 3; // Reduced from 5 to 3
+      doc.setFontSize(7); // Reduced from 8 to 7
       doc.text('www.tajalli.com', pageWidth / 2, yPosition, { align: 'center' });
 
       // Save PDF
@@ -484,18 +484,18 @@ export default function Receipt({ saleData, onClose }) {
   return (
     <>
       <div 
-        className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-2"
         onClick={onClose}
       >
         <div 
           className="bg-white rounded-lg shadow-2xl"
-          style={{ width: '320px', maxHeight: '85vh', overflowY: 'auto' }}
+          style={{ width: '300px', maxHeight: '95vh', overflowY: 'auto' }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Preview */}
-          <div className="p-4">
+          <div className="p-2">
             <div ref={receiptRef}>
-              <div className="receipt text-gray-800" style={{ width: '280px', margin: '0 auto', fontFamily: '"Courier New", monospace', color: '#1f2937', fontSize: '12px' }}>
+              <div className="receipt text-gray-800" style={{ width: '270px', margin: '0 auto', fontFamily: '"Courier New", monospace', color: '#1f2937', fontSize: '11px' }}>
                 {/* Header */}
                 <div className="header" style={{ textAlign: 'center', borderBottom: '2px dashed #000', paddingBottom: '8px', marginBottom: '8px' }}>
                   <div className="logo" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', width: '80px', height: '40px', margin: '0 auto 3px' }}>
@@ -571,28 +571,28 @@ export default function Receipt({ saleData, onClose }) {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 p-4 bg-white border-t">
+          <div className="flex flex-col sm:flex-row gap-2 p-2 bg-white border-t">
             <button
               onClick={handlePrint}
-              className="flex-1 bg-green-600 text-white py-2.5 px-4 rounded-lg hover:bg-green-700 font-medium transition flex items-center justify-center gap-2"
+              className="flex-1 bg-green-600 text-white py-2 px-3 rounded-lg hover:bg-green-700 font-medium transition flex items-center justify-center gap-2 text-sm"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
               </svg>
-              Print Receipt
+              Print
             </button>
             <button
               onClick={handleSavePDF}
-              className="flex-1 bg-indigo-600 text-white py-2.5 px-4 rounded-lg hover:bg-indigo-700 font-medium transition flex items-center justify-center gap-2"
+              className="flex-1 bg-indigo-600 text-white py-2 px-3 rounded-lg hover:bg-indigo-700 font-medium transition flex items-center justify-center gap-2 text-sm"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Save as PDF
+              PDF
             </button>
             <button
               onClick={onClose}
-              className="flex-1 bg-gray-100 text-gray-800 py-2.5 px-4 rounded-lg hover:bg-gray-200 font-medium transition border border-gray-200"
+              className="flex-1 bg-gray-100 text-gray-800 py-2 px-3 rounded-lg hover:bg-gray-200 font-medium transition border border-gray-200 text-sm"
             >
               Close
             </button>

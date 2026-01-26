@@ -75,29 +75,25 @@ export default function AdminPOS() {
       const data = await response.json();
       const allProducts = data.products || [];
       
-      // Remove duplicates using Set-based approach - more reliable
+      // Remove duplicates using only ID (each product has unique _id)
       const seenIds = new Set();
-      const seenEANs = new Set();
       const uniqueProducts = [];
       
       for (const product of allProducts) {
         if (!product) continue;
         
         const productId = product._id || product.id;
-        const productEAN = product.EAN_code;
         
         // Create a unique key for this product
         const idKey = productId ? String(productId) : null;
-        const eanKey = productEAN ? String(productEAN) : null;
         
-        // Skip if we've seen this ID or EAN before
-        if ((idKey && seenIds.has(idKey)) || (eanKey && seenEANs.has(eanKey))) {
+        // Skip if we've seen this ID before
+        if (idKey && seenIds.has(idKey)) {
           continue;
         }
         
         // Mark as seen and add to unique products
         if (idKey) seenIds.add(idKey);
-        if (eanKey) seenEANs.add(eanKey);
         uniqueProducts.push(product);
       }
       
@@ -205,17 +201,8 @@ export default function AdminPOS() {
 
   // Memoize unique products to avoid recalculating on every render
   const uniqueProducts = useMemo(() => {
-    const seenKeys = new Set();
-    return products.filter(product => {
-      if (!product) return false;
-      const productId = product._id || product.id;
-      const productEAN = product.EAN_code;
-      const key = productId ? String(productId) : (productEAN ? String(productEAN) : null);
-      
-      if (!key || seenKeys.has(key)) return false;
-      seenKeys.add(key);
-      return true;
-    });
+    // No deduplication - show all products by their unique ID
+    return products.filter(product => product !== null && product !== undefined);
   }, [products]);
 
   // Memoize categories calculation
