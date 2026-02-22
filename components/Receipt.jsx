@@ -31,10 +31,9 @@ export default function Receipt({ saleData, onClose }) {
     const scripts = clonedContent.querySelectorAll('script');
     scripts.forEach(script => script.remove());
     
-    // Remove event handlers from all elements
+    // Remove event handlers from all elements and force 5.5cm width for receipt root
     const allElements = clonedContent.querySelectorAll('*');
     allElements.forEach(el => {
-      // Remove all event handlers
       const attrs = el.attributes;
       for (let i = attrs.length - 1; i >= 0; i--) {
         const attr = attrs[i];
@@ -43,6 +42,16 @@ export default function Receipt({ saleData, onClose }) {
         }
       }
     });
+    
+    // Remove inline width from receipt so print CSS (5.5cm) applies
+    const receiptEl = clonedContent.querySelector('.receipt');
+    if (receiptEl && receiptEl.getAttribute('style')) {
+      const s = receiptEl.getAttribute('style')
+        .replace(/\bwidth\s*:[^;]+;?/gi, '')
+        .replace(/\bmax-width\s*:[^;]+;?/gi, '')
+        .trim();
+      receiptEl.setAttribute('style', s || '');
+    }
     
     // Get sanitized HTML
     const sanitizedHTML = clonedContent.innerHTML;
@@ -67,9 +76,16 @@ export default function Receipt({ saleData, onClose }) {
           }
           .print-content {
             position: absolute;
-            left: 0;
+            left: 50%;
             top: 0;
-            width: 100%;
+            transform: translateX(-50%);
+            width: 5.5cm !important;
+            max-width: 5.5cm !important;
+            font-size: 7px;
+          }
+          @page {
+            size: 5.5cm auto;
+            margin: 2mm;
           }
         }
       `;
@@ -108,137 +124,170 @@ export default function Receipt({ saleData, onClose }) {
             }
             body {
               font-family: 'Courier New', monospace;
-              padding: 20px;
+              padding: 0;
               background: white;
               color: #1f2937;
+              width: 100%;
+              min-height: 100vh;
+              display: flex;
+              justify-content: center;
+              align-items: flex-start;
+              margin: 0;
             }
             .receipt {
-              max-width: 300px;
+              width: 5.5cm;
+              max-width: 5.5cm;
               margin: 0 auto;
               background: white;
+              font-size: 7px;
+              line-height: 1.2;
+              word-wrap: break-word;
+              overflow-wrap: break-word;
             }
             .header {
               text-align: center;
-              border-bottom: 2px dashed #000;
-              padding-bottom: 10px;
-              margin-bottom: 10px;
+              border-bottom: 1px dashed #000;
+              padding-bottom: 3px;
+              margin-bottom: 3px;
             }
             .logo {
-              margin-bottom: 5px;
+              margin-bottom: 2px;
               display: flex;
               justify-content: center;
               align-items: center;
             }
             .logo img {
-              max-width: 120px;
-              max-height: 60px;
+              max-width: 3.2cm;
+              max-height: 1.2cm;
+              width: auto;
+              height: auto;
               object-fit: contain;
               display: block;
             }
             .company-name {
-              font-size: 18px;
+              font-size: 9px;
               font-weight: bold;
-              margin-bottom: 5px;
+              margin-bottom: 2px;
               color: #1f2937;
             }
             .company-details {
-              font-size: 10px;
-              line-height: 1.4;
+              font-size: 6px;
+              line-height: 1.25;
               color: #1f2937;
             }
             .section {
-              margin: 10px 0;
-              padding: 5px 0;
+              margin: 3px 0;
+              padding: 2px 0;
             }
             .section-title {
               font-weight: bold;
-              font-size: 11px;
-              margin-bottom: 5px;
+              font-size: 7px;
+              margin-bottom: 2px;
             }
             .info-row {
               display: flex;
               justify-content: space-between;
-              font-size: 10px;
-              margin: 3px 0;
+              font-size: 6px;
+              margin: 1px 0;
               color: #1f2937;
             }
             .items-header {
               display: flex;
               justify-content: space-between;
               font-weight: bold;
-              font-size: 10px;
+              font-size: 6px;
               border-bottom: 1px solid #000;
-              padding: 5px 0;
-              margin-top: 10px;
+              padding: 2px 0;
+              margin-top: 3px;
             }
             .item-row {
               display: flex;
               justify-content: space-between;
-              font-size: 10px;
-              padding: 5px 0;
+              align-items: flex-start;
+              gap: 2px;
+              font-size: 6px;
+              padding: 2px 0;
               border-bottom: 1px dashed #ccc;
             }
             .item-details {
               flex: 1;
+              min-width: 0;
+              overflow: hidden;
             }
             .item-name {
               font-weight: bold;
+              font-size: 6px;
+              word-wrap: break-word;
+              overflow-wrap: break-word;
             }
             .item-qty {
-              font-size: 9px;
+              font-size: 5px;
               color: #1f2937;
             }
             .item-price {
               text-align: right;
-              min-width: 60px;
+              min-width: 1.4cm;
+              flex-shrink: 0;
+              font-size: 6px;
             }
             .totals {
-              margin-top: 10px;
-              border-top: 2px solid #000;
-              padding-top: 10px;
+              margin-top: 3px;
+              border-top: 1px solid #000;
+              padding-top: 3px;
             }
             .total-row {
               display: flex;
               justify-content: space-between;
-              font-size: 11px;
-              margin: 5px 0;
+              font-size: 6px;
+              margin: 2px 0;
             }
             .grand-total {
-              font-size: 14px;
+              font-size: 8px;
               font-weight: bold;
-              border-top: 2px solid #000;
-              padding-top: 8px;
-              margin-top: 8px;
+              border-top: 1px solid #000;
+              padding-top: 3px;
+              margin-top: 3px;
             }
             .footer {
               text-align: center;
-              margin-top: 15px;
-              padding-top: 10px;
-              border-top: 2px dashed #000;
-              font-size: 10px;
+              margin-top: 5px;
+              padding-top: 3px;
+              border-top: 1px dashed #000;
+              font-size: 6px;
               color: #1f2937;
             }
             .thank-you {
               font-weight: bold;
-              font-size: 12px;
-              margin-bottom: 5px;
+              font-size: 7px;
+              margin-bottom: 2px;
             }
             @media print {
-              body {
-                padding: 0;
-                margin: 0;
+              html, body {
+                width: 100% !important;
+                min-height: 100vh;
+                padding: 0 !important;
+                margin: 0 !important;
+                background: white;
+                display: flex !important;
+                justify-content: center !important;
+                align-items: flex-start !important;
+              }
+              .receipt {
+                width: 5.5cm !important;
+                max-width: 5.5cm !important;
+                margin: 0 auto !important;
               }
               .no-print {
                 display: none;
               }
               @page {
-                margin: 0.5cm;
-                size: auto;
+                size: 5.5cm auto;
+                margin: 2mm;
               }
             }
             @media screen {
               body {
-                padding: 20px;
+                padding: 10px;
               }
             }
           </style>
@@ -315,15 +364,15 @@ export default function Receipt({ saleData, onClose }) {
       // Dynamically import jsPDF only when needed to avoid webpack module loading issues
       const { default: jsPDF } = await import('jspdf');
       
-      // Create PDF with narrow width for receipt (80mm thermal paper)
+      // Create PDF with 5.5cm (55mm) width for receipt
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: [80, 200] // 80mm wide, 200mm tall (adjusts automatically as content grows)
+        format: [55, 200] // 5.5cm wide, height auto-adjusts as content grows
       });
       
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const margin = 5; // Reduced margin for narrow receipt
+      const pageWidth = doc.internal.pageSize.getWidth(); // 55mm
+      const margin = 2; // 2mm margin for 5.5cm receipt
       let yPosition = 8;
       const maxWidth = pageWidth - (margin * 2);
 
@@ -349,7 +398,7 @@ export default function Receipt({ saleData, onClose }) {
         
         // Add logo to PDF if loaded successfully
         if (logoImg.naturalWidth > 0) {
-          const logoWidth = 35; // Reduced from 50 to 35mm
+          const logoWidth = Math.min(28, pageWidth - margin * 2); // Max 28mm for 5.5cm receipt
           const logoHeight = (logoImg.naturalHeight / logoImg.naturalWidth) * logoWidth;
           doc.addImage(logoImg, 'PNG', (pageWidth - logoWidth) / 2, yPosition, logoWidth, logoHeight);
           yPosition += logoHeight + 2; // Reduced spacing from 5 to 2
@@ -421,7 +470,7 @@ export default function Receipt({ saleData, onClose }) {
         doc.setTextColor(0, 0, 0); // Pure black for better visibility
         doc.setFontSize(9); // Increased from 8 to 9
         doc.setFont(undefined, 'bold');
-        const itemNameLines = doc.splitTextToSize(item.name, maxWidth - 50);
+        const itemNameLines = doc.splitTextToSize(item.name, maxWidth - 18); // Leave ~18mm for price column
         doc.text(itemNameLines, margin, yPosition);
         
         const qtyText = item.unit === 'kg' 
