@@ -147,7 +147,7 @@ export async function GET(request) {
     }
 
     return NextResponse.json({
-      sales: formatSalesData,
+      sales: salesData,
       revenue: formatRevenueData,
       customers: formatCustomersData,
       period
