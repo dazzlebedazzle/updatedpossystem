@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { userDB } from '@/lib/database';
 import { createSession, comparePassword } from '@/lib/auth';
+import { getPasswordPolicyFields, isPasswordExpired, needsPasswordPolicyBackfill } from '@/lib/password-policy';
 
 // Mark this route as dynamic to prevent build-time analysis
 export const dynamic = 'force-dynamic';
@@ -34,17 +35,27 @@ export async function POST(request) {
         { status: 401 }
       );
     }
+
+    let sessionUser = user;
+    if (needsPasswordPolicyBackfill(user)) {
+      sessionUser = await userDB.update(user._id || user.id, getPasswordPolicyFields(user.role));
+    } else if (isPasswordExpired(user)) {
+      sessionUser = await userDB.markPasswordChangeRequired(user._id || user.id);
+    }
     
-    const { session, token } = createSession(user);
+    const { session, token } = createSession(sessionUser);
     
     const response = NextResponse.json({
       success: true,
       user: {
-        id: user._id || user.id,
-        email: user.email,
-        role: user.role,
-        name: user.name,
-        token: user.token
+        id: sessionUser._id || sessionUser.id,
+        email: sessionUser.email,
+        role: sessionUser.role,
+        name: sessionUser.name,
+        token: sessionUser.token,
+        assignedShopIds: (sessionUser.assignedShopIds || []).map((id) => id.toString()),
+        mustChangePassword: Boolean(sessionUser.mustChangePassword),
+        passwordExpiresAt: sessionUser.passwordExpiresAt || null
       },
       jwtToken: token // Include JWT token in response for Bearer authentication
     });

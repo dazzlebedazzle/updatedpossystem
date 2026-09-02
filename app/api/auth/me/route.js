@@ -44,7 +44,10 @@ export async function GET(request) {
           role: userObj.role,
           name: userObj.name,
           token: userObj.token,
-          permissions: userObj.permissions || []
+          permissions: userObj.permissions || [],
+          assignedShopIds: (userObj.assignedShopIds || []).map((id) => id.toString()),
+          mustChangePassword: Boolean(userObj.mustChangePassword),
+          passwordExpiresAt: userObj.passwordExpiresAt || null
         }
       });
     }
@@ -57,7 +60,10 @@ export async function GET(request) {
         role: session.role,
         name: session.name,
         token: session.token,
-        permissions: session.permissions || []
+        permissions: session.permissions || [],
+        assignedShopIds: session.assignedShopIds || [],
+        mustChangePassword: Boolean(session.mustChangePassword),
+        passwordExpiresAt: session.passwordExpiresAt || null
       }
     });
   } catch (error) {

@@ -1,22 +1,24 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import dynamic from 'next/dynamic';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import Layout from '@/components/Layout';
 import { PageLoader, Loader } from '@/components/Loader';
 import { isTodayIST } from '@/lib/date-utils';
-
-// Lazy load heavy chart components for better performance
-const LineChart = dynamic(() => import('recharts').then(mod => mod.LineChart), { ssr: false });
-const Line = dynamic(() => import('recharts').then(mod => mod.Line), { ssr: false });
-const BarChart = dynamic(() => import('recharts').then(mod => mod.BarChart), { ssr: false });
-const Bar = dynamic(() => import('recharts').then(mod => mod.Bar), { ssr: false });
-const XAxis = dynamic(() => import('recharts').then(mod => mod.XAxis), { ssr: false });
-const YAxis = dynamic(() => import('recharts').then(mod => mod.YAxis), { ssr: false });
-const CartesianGrid = dynamic(() => import('recharts').then(mod => mod.CartesianGrid), { ssr: false });
-const Tooltip = dynamic(() => import('recharts').then(mod => mod.Tooltip), { ssr: false });
-const Legend = dynamic(() => import('recharts').then(mod => mod.Legend), { ssr: false });
-const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), { ssr: false });
 
 export default function SuperAdminDashboard() {
   const [stats, setStats] = useState({
@@ -32,6 +34,7 @@ export default function SuperAdminDashboard() {
   const [salesData, setSalesData] = useState([]);
   const [revenueData, setRevenueData] = useState([]);
   const [customersData, setCustomersData] = useState([]);
+  const [targets, setTargets] = useState([]);
 
   // Calculate daily sales statistics (IST)
   const dailySalesStats = useMemo(() => {
@@ -59,22 +62,25 @@ export default function SuperAdminDashboard() {
   const fetchStats = useCallback(async () => {
     try {
       // Use default cache for bfcache compatibility
-      const [usersRes, productsRes, salesRes] = await Promise.all([
+      const [usersRes, productsRes, salesRes, targetsRes] = await Promise.all([
         fetch('/api/users', { cache: 'default' }),
         fetch('/api/products', { cache: 'default' }),
-        fetch('/api/sales', { cache: 'default' })
+        fetch('/api/sales', { cache: 'default' }),
+        fetch('/api/targets', { cache: 'no-store' })
       ]);
 
-      const [usersData, productsData, salesData] = await Promise.all([
+      const [usersData, productsData, salesData, targetsData] = await Promise.all([
         usersRes.json(),
         productsRes.json(),
-        salesRes.json()
+        salesRes.json(),
+        targetsRes.json()
       ]);
 
       // Use useMemo for expensive calculations
       const revenue = salesData.sales?.reduce((sum, sale) => sum + (sale.total || 0), 0) || 0;
 
       setAllSales(salesData.sales || []);
+      setTargets(targetsData.targets || []);
       setStats({
         totalUsers: usersData.users?.length || 0,
         totalProducts: productsData.products?.length || 0,
@@ -129,6 +135,64 @@ export default function SuperAdminDashboard() {
       return date;
     }
   };
+
+  const targetCompletion = useMemo(() => {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const monthlySales = allSales.filter((sale) => {
+      const saleDate = new Date(sale.createdAt || sale.date);
+      return saleDate >= monthStart && saleDate < nextMonthStart;
+    });
+
+    const revenueByShop = monthlySales.reduce((map, sale) => {
+      const shopName = sale.shopName || 'N/A';
+      map[shopName] = (map[shopName] || 0) + (Number(sale.total) || 0);
+      return map;
+    }, {});
+
+    const buckets = [
+      { name: 'Below Minimum', value: 0, color: '#DC2626' },
+      { name: 'In Progress', value: 0, color: '#F59E0B' },
+      { name: 'Achieved', value: 0, color: '#16A34A' },
+    ];
+
+    const storeRows = targets
+      .filter((target) => target.isActive !== false)
+      .map((target) => {
+        const achieved = revenueByShop[target.shopName] || 0;
+        const targetAmount = Number(target.targetAmount) || 0;
+        const minimumTargetAmount = Number(target.minimumTargetAmount) || targetAmount * 0.6;
+        const completion = targetAmount > 0 ? Math.min((achieved / targetAmount) * 100, 999) : 0;
+        let status = 'Below Minimum';
+
+        if (targetAmount > 0 && achieved >= targetAmount) {
+          status = 'Achieved';
+          buckets[2].value += 1;
+        } else if (achieved >= minimumTargetAmount) {
+          status = 'In Progress';
+          buckets[1].value += 1;
+        } else {
+          buckets[0].value += 1;
+        }
+
+        return {
+          shopName: target.shopName,
+          achieved,
+          targetAmount,
+          completion,
+          status
+        };
+      })
+      .sort((a, b) => a.completion - b.completion)
+      .slice(0, 5);
+
+    return {
+      chartData: buckets.filter((bucket) => bucket.value > 0),
+      storeRows,
+      activeTargets: targets.filter((target) => target.isActive !== false).length
+    };
+  }, [allSales, targets]);
 
   return (
     <Layout userRole="superadmin">
@@ -278,6 +342,86 @@ export default function SuperAdminDashboard() {
                     <dd className="text-lg font-medium text-gray-900">₹{dailySalesStats.totalCard.toFixed(2)}</dd>
                   </dl>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-4 sm:mb-6 bg-white shadow rounded-lg p-4 sm:p-6">
+          <div className="flex flex-col lg:flex-row gap-6">
+            <div className="lg:w-1/2">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Monthly Target Radar</h2>
+                <span className="text-sm text-gray-700">{targetCompletion.activeTargets} active targets</span>
+              </div>
+              {targetCompletion.chartData.length === 0 ? (
+                <div className="h-64 flex items-center justify-center text-gray-800 text-sm">
+                  No active targets configured
+                </div>
+              ) : (
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={targetCompletion.chartData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={55}
+                        outerRadius={90}
+                        paddingAngle={3}
+                        label={({ name, value }) => `${name}: ${value}`}
+                      >
+                        {targetCompletion.chartData.map((entry) => (
+                          <Cell key={entry.name} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value, name) => [value, name]} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+            <div className="lg:w-1/2">
+              <h3 className="text-base font-semibold text-gray-900 mb-3">Lowest Completion Stores</h3>
+              <div className="space-y-3">
+                {targetCompletion.storeRows.length === 0 ? (
+                  <div className="text-sm text-gray-800">Set store targets to see completion status.</div>
+                ) : (
+                  targetCompletion.storeRows.map((store) => (
+                    <div key={store.shopName} className="border border-gray-200 rounded-lg p-3">
+                      <div className="flex items-center justify-between gap-3 mb-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{store.shopName}</p>
+                          <p className="text-xs text-gray-700">Rs {store.achieved.toFixed(2)} / Rs {store.targetAmount.toFixed(2)}</p>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                          store.status === 'Achieved'
+                            ? 'bg-green-100 text-green-800'
+                            : store.status === 'In Progress'
+                              ? 'bg-orange-100 text-orange-800'
+                              : 'bg-red-100 text-red-800'
+                        }`}>
+                          {store.status}
+                        </span>
+                      </div>
+                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full ${
+                            store.status === 'Achieved'
+                              ? 'bg-green-600'
+                              : store.status === 'In Progress'
+                                ? 'bg-orange-500'
+                                : 'bg-red-600'
+                          }`}
+                          style={{ width: `${Math.min(store.completion, 100)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>

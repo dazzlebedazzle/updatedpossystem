@@ -12,6 +12,27 @@ export async function middleware(request) {
     if (sizeValidation) {
       return addSecurityHeaders(sizeValidation);
     }
+
+    const apiSessionCookie = request.cookies.get('session');
+    const apiSession = apiSessionCookie ? sanitizeSession(safeJsonParse(apiSessionCookie.value, 10 * 1024)) : null;
+    const passwordExpiredByDate = apiSession?.passwordExpiresAt && new Date(apiSession.passwordExpiresAt).getTime() <= Date.now();
+    const passwordAllowedApiRoutes = [
+      '/api/auth/login',
+      '/api/auth/logout',
+      '/api/auth/me',
+      '/api/auth/change-password'
+    ];
+
+    if (
+      apiSession &&
+      (apiSession.mustChangePassword || passwordExpiredByDate) &&
+      !passwordAllowedApiRoutes.includes(pathname)
+    ) {
+      return addSecurityHeaders(NextResponse.json(
+        { error: 'Password refresh required' },
+        { status: 403 }
+      ));
+    }
     
     // Rate limiting removed - all requests allowed
     // Add security headers to all API responses
@@ -43,6 +64,8 @@ export async function middleware(request) {
         return NextResponse.redirect(new URL('/admin/dashboard', request.url));
       } else if (session.role === 'agent') {
         return NextResponse.redirect(new URL('/user/dashboard', request.url));
+      } else if (session.role === 'manager') {
+        return NextResponse.redirect(new URL('/manager/store-products', request.url));
       }
     }
     return NextResponse.next();
@@ -51,6 +74,14 @@ export async function middleware(request) {
   // Protected routes - require authentication
   if (!session) {
     return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  const passwordExpiredByDate = session.passwordExpiresAt && new Date(session.passwordExpiresAt).getTime() <= Date.now();
+  if (
+    (session.mustChangePassword || passwordExpiredByDate) &&
+    pathname !== '/change-password'
+  ) {
+    return NextResponse.redirect(new URL('/change-password', request.url));
   }
   
   // Role-based route protection
@@ -68,6 +99,12 @@ export async function middleware(request) {
   
   if (pathname.startsWith('/user')) {
     if (!['superadmin', 'admin', 'agent'].includes(session.role)) {
+      return NextResponse.redirect(new URL('/unauthorized', request.url));
+    }
+  }
+
+  if (pathname.startsWith('/manager')) {
+    if (!['superadmin', 'manager'].includes(session.role)) {
       return NextResponse.redirect(new URL('/unauthorized', request.url));
     }
   }

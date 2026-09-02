@@ -42,6 +42,8 @@ export default function RegisterPage() {
           router.push('/superadmin/dashboard');
         } else if (data.user.role === 'admin') {
           router.push('/admin/dashboard');
+        } else if (data.user.role === 'manager') {
+          router.push('/manager/store-products');
         } else {
           router.push('/user/dashboard');
         }

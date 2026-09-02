@@ -32,7 +32,11 @@ export async function GET(request) {
     } else {
       // If no filter, check if user wants only their shops
       // For regular users, show only their shops
-      if (session.role === 'user' || session.role === 'agent') {
+      if (session.role === 'manager') {
+        const assignedShopIds = new Set((session.assignedShopIds || []).map((id) => id.toString()));
+        const allShops = await shopDB.findAll();
+        shops = allShops.filter((shop) => assignedShopIds.has((shop._id || shop.id).toString()));
+      } else if (session.role === 'user' || session.role === 'agent') {
         shops = await shopDB.findByUserId(session.userId);
       } else {
         // Admins and superadmins see all shops

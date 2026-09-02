@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { productDB, userDB } from '@/lib/database';
 import { hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
 import { getSessionFromRequest } from '@/lib/auth-helper';
+import { canManagerAccessProduct, getManagerAccess } from '@/lib/manager-access';
 
 // Mark this route as dynamic to prevent build-time analysis
 export const dynamic = 'force-dynamic';
@@ -72,6 +73,11 @@ export async function GET(request) {
           products = [];
         }
       }
+    }
+
+    if (session.role === 'manager') {
+      const { allowedProductShopIds } = await getManagerAccess(session);
+      products = products.filter((product) => canManagerAccessProduct(product, allowedProductShopIds));
     }
     
     return NextResponse.json({ products });

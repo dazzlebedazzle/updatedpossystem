@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { productDB } from '@/lib/database';
 import { hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
 import { getSessionFromRequest } from '@/lib/auth-helper';
+import { canManagerAccessProduct, getManagerAccess } from '@/lib/manager-access';
 
 // Mark this route as dynamic to prevent build-time analysis
 export const dynamic = 'force-dynamic';
@@ -34,6 +35,16 @@ export async function GET(request, { params }) {
         { status: 404 }
       );
     }
+
+    if (session.role === 'manager') {
+      const { allowedProductShopIds } = await getManagerAccess(session);
+      if (!canManagerAccessProduct(product, allowedProductShopIds)) {
+        return NextResponse.json(
+          { error: 'Product not found for assigned store' },
+          { status: 404 }
+        );
+      }
+    }
     
     return NextResponse.json({ product });
   } catch (error) {
@@ -61,6 +72,13 @@ export async function PUT(request, { params }) {
     if (!hasPermission(session.permissions, MODULES.PRODUCTS, OPERATIONS.UPDATE)) {
       return NextResponse.json(
         { error: 'Permission denied: products:update' },
+        { status: 403 }
+      );
+    }
+
+    if (session.role === 'manager') {
+      return NextResponse.json(
+        { error: 'Managers can only update assigned store products through the manager endpoint' },
         { status: 403 }
       );
     }

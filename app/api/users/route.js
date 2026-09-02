@@ -3,6 +3,7 @@ import { userDB } from '@/lib/database';
 import { hashPassword, getTokenByRole } from '@/lib/auth';
 import { getDefaultPermissions, hasPermission, MODULES, OPERATIONS } from '@/lib/permissions';
 import { safeJsonParse, sanitizeSession } from '@/lib/security-utils';
+import { getPasswordPolicyFields } from '@/lib/password-policy';
 
 // Mark this route as dynamic to prevent build-time analysis
 export const dynamic = 'force-dynamic';
@@ -89,7 +90,8 @@ export async function POST(request) {
       );
     }
     
-    const { email, password, name, role, permissions, supplier } = await request.json();
+    const { email, password, name, role, permissions, supplier, assignedShopIds } = await request.json();
+    const requestedRole = role || 'agent';
     
     if (!email || !password || !name) {
       return NextResponse.json(
@@ -97,9 +99,16 @@ export async function POST(request) {
         { status: 400 }
       );
     }
+
+    if (!['admin', 'agent', 'manager'].includes(requestedRole)) {
+      return NextResponse.json(
+        { error: 'Invalid user role' },
+        { status: 400 }
+      );
+    }
     
     // For agents, supplier is required and must be unique
-    if (role === 'agent') {
+    if (requestedRole === 'agent') {
       if (!supplier || supplier.trim() === '') {
         return NextResponse.json(
           { error: 'Supplier name is required for agents' },
@@ -120,6 +129,13 @@ export async function POST(request) {
         );
       }
     }
+
+    if (requestedRole === 'manager' && (!Array.isArray(assignedShopIds) || assignedShopIds.length === 0)) {
+      return NextResponse.json(
+        { error: 'At least one store must be assigned for managers' },
+        { status: 400 }
+      );
+    }
     
     const existingUser = await userDB.findByEmail(email);
     if (existingUser) {
@@ -133,21 +149,23 @@ export async function POST(request) {
     const hashedPassword = await hashPassword(password);
     
     // Get token based on role
-    const token = getTokenByRole(role || 'agent');
+    const token = getTokenByRole(requestedRole);
     
     // Use provided permissions or default permissions for the role
     const userPermissions = permissions && permissions.length > 0 
       ? permissions 
-      : getDefaultPermissions(role || 'agent');
+      : getDefaultPermissions(requestedRole);
     
     const newUser = await userDB.create({
       email,
       password: hashedPassword,
       name,
-      role: role || 'agent',
+      role: requestedRole,
       token: token,
       permissions: userPermissions,
-      supplier: role === 'agent' && supplier ? supplier.trim() : ''
+      supplier: requestedRole === 'agent' && supplier ? supplier.trim() : '',
+      assignedShopIds: requestedRole === 'manager' ? assignedShopIds.map((id) => id.toString()) : [],
+      ...getPasswordPolicyFields(requestedRole)
     });
     
     return NextResponse.json({
@@ -158,7 +176,8 @@ export async function POST(request) {
         role: newUser.role,
         name: newUser.name,
         token: newUser.token,
-        permissions: newUser.permissions
+        permissions: newUser.permissions,
+        assignedShopIds: newUser.assignedShopIds || []
       }
     });
   } catch (error) {

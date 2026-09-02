@@ -31,12 +31,19 @@ export default function LoginPage() {
         if (data.jwtToken && typeof window !== 'undefined') {
           localStorage.setItem('authToken', data.jwtToken);
         }
+
+        if (data.user.mustChangePassword) {
+          router.push('/change-password');
+          return;
+        }
         
         // Redirect based on role
         if (data.user.role === 'superadmin') {
           router.push('/superadmin/dashboard');
         } else if (data.user.role === 'admin') {
           router.push('/admin/dashboard');
+        } else if (data.user.role === 'manager') {
+          router.push('/manager/store-products');
         } else {
           router.push('/user/dashboard');
         }

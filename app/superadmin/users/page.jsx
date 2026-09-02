@@ -10,6 +10,7 @@ import { suppliers } from '@/lib/suppliers';
 export default function SuperAdminUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [shops, setShops] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [showModal, setShowModal] = useState(false);
@@ -22,7 +23,8 @@ export default function SuperAdminUsers() {
     password: '',
     role: 'agent',
     supplier: '',
-    permissions: []
+    permissions: [],
+    assignedShopIds: []
   });
   const [editFormData, setEditFormData] = useState({
     name: '',
@@ -31,7 +33,8 @@ export default function SuperAdminUsers() {
     newPassword: '',
     role: 'agent',
     supplier: '',
-    permissions: []
+    permissions: [],
+    assignedShopIds: []
   });
   
   // Update permissions when role changes (default permissions set automatically)
@@ -44,6 +47,7 @@ export default function SuperAdminUsers() {
 
   useEffect(() => {
     fetchUsers();
+    fetchShops();
   }, []);
 
   // Pagination calculations
@@ -71,6 +75,39 @@ export default function SuperAdminUsers() {
     }
   };
 
+  const fetchShops = async () => {
+    try {
+      const response = await fetch('/api/shops', { cache: 'default' });
+      const data = await response.json();
+      setShops(data.shops || []);
+    } catch (error) {
+      console.error('Error fetching shops:', error);
+    }
+  };
+
+  const getShopId = (shop) => (shop?._id || shop?.id || '').toString();
+
+  const getAssignedShopNames = (assignedShopIds = []) => {
+    const assignedSet = new Set(assignedShopIds.map((id) => id.toString()));
+    return shops
+      .filter((shop) => assignedSet.has(getShopId(shop)))
+      .map((shop) => shop.name)
+      .join(', ');
+  };
+
+  const getPasswordStatus = (user) => {
+    if (!['agent', 'manager'].includes(user.role)) return null;
+    if (user.mustChangePassword) return { label: 'Password refresh required', className: 'text-red-700' };
+    if (!user.passwordExpiresAt) return { label: 'Password expiry not set', className: 'text-orange-700' };
+
+    const expiresAt = new Date(user.passwordExpiresAt);
+    const daysLeft = Math.ceil((expiresAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+
+    if (daysLeft <= 0) return { label: 'Password refresh required', className: 'text-red-700' };
+    if (daysLeft <= 7) return { label: `Password expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`, className: 'text-orange-700' };
+    return { label: `Password expires ${expiresAt.toLocaleDateString()}`, className: 'text-emerald-700' };
+  };
+
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
@@ -85,7 +122,7 @@ export default function SuperAdminUsers() {
         toast.success('User created successfully!');
         setShowModal(false);
         const defaultPerms = getDefaultPermissions('agent');
-        setFormData({ name: '', email: '', password: '', role: 'agent', supplier: '', permissions: defaultPerms });
+        setFormData({ name: '', email: '', password: '', role: 'agent', supplier: '', permissions: defaultPerms, assignedShopIds: [] });
         setSelectedRole('agent');
         fetchUsers();
       } else {
@@ -106,7 +143,8 @@ export default function SuperAdminUsers() {
       newPassword: '',
       role: user.role || 'agent',
       supplier: user.supplier || '',
-      permissions: user.permissions || []
+      permissions: user.permissions || [],
+      assignedShopIds: (user.assignedShopIds || []).map((id) => id.toString())
     });
     setShowEditModal(true);
   };
@@ -122,7 +160,8 @@ export default function SuperAdminUsers() {
         email: editFormData.email,
         role: editFormData.role,
         supplier: editFormData.role === 'agent' ? editFormData.supplier : '',
-        permissions: editFormData.permissions
+        permissions: editFormData.permissions,
+        assignedShopIds: editFormData.role === 'manager' ? editFormData.assignedShopIds : []
       };
 
       // Only include password if new password is provided
@@ -151,7 +190,8 @@ export default function SuperAdminUsers() {
           newPassword: '',
           role: 'agent',
           supplier: '',
-          permissions: []
+          permissions: [],
+          assignedShopIds: []
         });
         fetchUsers();
       } else {
@@ -193,7 +233,7 @@ export default function SuperAdminUsers() {
               onClick={() => {
                 setSelectedRole('admin');
                 const defaultPerms = getDefaultPermissions('admin');
-                setFormData({ name: '', email: '', password: '', role: 'admin', supplier: '', permissions: defaultPerms });
+                setFormData({ name: '', email: '', password: '', role: 'admin', supplier: '', permissions: defaultPerms, assignedShopIds: [] });
                 setShowModal(true);
               }}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition flex items-center justify-center gap-2 text-sm sm:text-base touch-manipulation"
@@ -204,12 +244,23 @@ export default function SuperAdminUsers() {
               onClick={() => {
                 setSelectedRole('agent');
                 const defaultPerms = getDefaultPermissions('agent');
-                setFormData({ name: '', email: '', password: '', role: 'agent', supplier: '', permissions: defaultPerms });
+                setFormData({ name: '', email: '', password: '', role: 'agent', supplier: '', permissions: defaultPerms, assignedShopIds: [] });
                 setShowModal(true);
               }}
               className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition flex items-center justify-center gap-2 text-sm sm:text-base touch-manipulation"
             >
               <span>+</span> Create Agent
+            </button>
+            <button
+              onClick={() => {
+                setSelectedRole('manager');
+                const defaultPerms = getDefaultPermissions('manager');
+                setFormData({ name: '', email: '', password: '', role: 'manager', supplier: '', permissions: defaultPerms, assignedShopIds: [] });
+                setShowModal(true);
+              }}
+              className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 active:bg-emerald-800 transition flex items-center justify-center gap-2 text-sm sm:text-base touch-manipulation"
+            >
+              <span>+</span> Create Manager
             </button>
           </div>
         </div>
@@ -222,6 +273,7 @@ export default function SuperAdminUsers() {
               <ul className="divide-y divide-gray-200">
                 {paginatedUsers.map((user) => {
                 const userId = user._id || user.id;
+                const passwordStatus = getPasswordStatus(user);
                 return (
                   <li key={userId}>
                     <div className="px-3 sm:px-4 py-3 sm:py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
@@ -231,6 +283,7 @@ export default function SuperAdminUsers() {
                           <span className={`inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${
                             user.role === 'superadmin' ? 'bg-purple-100 text-purple-800' :
                             user.role === 'admin' ? 'bg-blue-100 text-blue-800' :
+                            user.role === 'manager' ? 'bg-emerald-100 text-emerald-800' :
                             'bg-white text-gray-800'
                           }`}>
                             {user.role}
@@ -239,6 +292,16 @@ export default function SuperAdminUsers() {
                         <p className="mt-1 text-sm text-gray-800 truncate">{user.email}</p>
                         {user.supplier && (
                           <p className="mt-1 text-xs text-gray-800 truncate">Supplier: {user.supplier}</p>
+                        )}
+                        {user.role === 'manager' && (
+                          <p className="mt-1 text-xs text-gray-800 truncate">
+                            Stores: {getAssignedShopNames(user.assignedShopIds || []) || 'None assigned'}
+                          </p>
+                        )}
+                        {passwordStatus && (
+                          <p className={`mt-1 text-xs font-medium ${passwordStatus.className}`}>
+                            {passwordStatus.label}
+                          </p>
                         )}
                       </div>
                       <div className="flex gap-2 w-full sm:w-auto">
@@ -355,13 +418,13 @@ export default function SuperAdminUsers() {
             <div className="relative mx-auto p-4 sm:p-6 border w-full max-w-md shadow-lg rounded-lg bg-white my-auto">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg sm:text-xl font-bold text-gray-900">
-                  Create New {formData.role === 'admin' ? 'Admin' : 'Agent'}
+                  Create New {formData.role === 'admin' ? 'Admin' : formData.role === 'manager' ? 'Manager' : 'Agent'}
                 </h3>
                 <button
                   onClick={() => {
                     setShowModal(false);
                     const defaultPerms = getDefaultPermissions('agent');
-                    setFormData({ name: '', email: '', password: '', role: 'agent', supplier: '', permissions: defaultPerms });
+                    setFormData({ name: '', email: '', password: '', role: 'agent', supplier: '', permissions: defaultPerms, assignedShopIds: [] });
                   }}
                   className="text-gray-800 hover:text-gray-900 text-2xl sm:text-3xl leading-none touch-manipulation"
                 >
@@ -405,10 +468,10 @@ export default function SuperAdminUsers() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-800 mb-1">Role</label>
-                  <div className="flex gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
-                      onClick={() => setFormData({ ...formData, role: 'admin' })}
+                      onClick={() => setFormData({ ...formData, role: 'admin', assignedShopIds: [] })}
                       className={`flex-1 px-4 py-2 rounded-md border-2 transition ${
                         formData.role === 'admin'
                           ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
@@ -419,7 +482,7 @@ export default function SuperAdminUsers() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setFormData({ ...formData, role: 'agent' })}
+                      onClick={() => setFormData({ ...formData, role: 'agent', assignedShopIds: [] })}
                       className={`flex-1 px-4 py-2 rounded-md border-2 transition ${
                         formData.role === 'agent'
                           ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-medium'
@@ -428,11 +491,24 @@ export default function SuperAdminUsers() {
                     >
                       Agent
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, role: 'manager', supplier: '' })}
+                      className={`px-4 py-2 rounded-md border-2 transition ${
+                        formData.role === 'manager'
+                          ? 'border-emerald-500 bg-emerald-50 text-emerald-700 font-medium'
+                          : 'border-gray-200 bg-white text-gray-800 hover:bg-white'
+                      }`}
+                    >
+                      Manager
+                    </button>
                   </div>
                   <p className="mt-2 text-xs text-gray-800">
                     {formData.role === 'admin' 
                       ? 'Admin can manage products, sales, customers, and inventory'
-                      : 'Agent can access POS interface and view personal sales'}
+                      : formData.role === 'manager'
+                        ? 'Manager can edit assigned store product name, price, and quantity only'
+                        : 'Agent can access POS interface and view personal sales'}
                   </p>
                 </div>
                 {formData.role === 'agent' && (
@@ -458,13 +534,50 @@ export default function SuperAdminUsers() {
                     </p>
                   </div>
                 )}
+                {formData.role === 'manager' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-800 mb-2">
+                      Assigned Stores <span className="text-red-500">*</span>
+                    </label>
+                    <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-md p-2 space-y-2">
+                      {shops.length === 0 ? (
+                        <p className="text-sm text-gray-800">No stores available.</p>
+                      ) : (
+                        shops.map((shop) => {
+                          const shopId = getShopId(shop);
+                          return (
+                            <label key={shopId} className="flex items-start gap-2 text-sm text-gray-800">
+                              <input
+                                type="checkbox"
+                                checked={formData.assignedShopIds.includes(shopId)}
+                                onChange={(e) => {
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    assignedShopIds: e.target.checked
+                                      ? [...prev.assignedShopIds, shopId]
+                                      : prev.assignedShopIds.filter((id) => id !== shopId)
+                                  }));
+                                }}
+                                className="mt-1"
+                              />
+                              <span>
+                                {shop.name}
+                                {shop.location ? ` - ${shop.location}` : ''}
+                              </span>
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className="flex justify-end space-x-3 pt-4">
                   <button
                     type="button"
                     onClick={() => {
                       setShowModal(false);
                       const defaultPerms = getDefaultPermissions('agent');
-                      setFormData({ name: '', email: '', password: '', role: 'agent', supplier: '', permissions: defaultPerms });
+                      setFormData({ name: '', email: '', password: '', role: 'agent', supplier: '', permissions: defaultPerms, assignedShopIds: [] });
                     }}
                     className="px-4 py-2 bg-white text-gray-800 rounded-lg hover:bg-white transition"
                   >
@@ -478,7 +591,7 @@ export default function SuperAdminUsers() {
                         : 'bg-indigo-600 hover:bg-indigo-700'
                     }`}
                   >
-                    Create {formData.role === 'admin' ? 'Admin' : 'Agent'}
+                    Create {formData.role === 'admin' ? 'Admin' : formData.role === 'manager' ? 'Manager' : 'Agent'}
                   </button>
                 </div>
               </form>
@@ -505,7 +618,8 @@ export default function SuperAdminUsers() {
                       newPassword: '',
                       role: 'agent',
                       supplier: '',
-                      permissions: []
+                      permissions: [],
+                      assignedShopIds: []
                     });
                   }}
                   className="text-gray-800 hover:text-gray-900 text-2xl sm:text-3xl leading-none touch-manipulation"
@@ -552,12 +666,12 @@ export default function SuperAdminUsers() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-800 mb-1">Role</label>
-                  <div className="flex gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={() => {
                         const defaultPerms = getDefaultPermissions('admin');
-                        setEditFormData({ ...editFormData, role: 'admin', permissions: defaultPerms });
+                        setEditFormData({ ...editFormData, role: 'admin', supplier: '', assignedShopIds: [], permissions: defaultPerms });
                       }}
                       className={`flex-1 px-4 py-2 rounded-md border-2 transition ${
                         editFormData.role === 'admin'
@@ -571,7 +685,7 @@ export default function SuperAdminUsers() {
                       type="button"
                       onClick={() => {
                         const defaultPerms = getDefaultPermissions('agent');
-                        setEditFormData({ ...editFormData, role: 'agent', permissions: defaultPerms });
+                        setEditFormData({ ...editFormData, role: 'agent', assignedShopIds: [], permissions: defaultPerms });
                       }}
                       className={`flex-1 px-4 py-2 rounded-md border-2 transition ${
                         editFormData.role === 'agent'
@@ -581,11 +695,27 @@ export default function SuperAdminUsers() {
                     >
                       Agent
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const defaultPerms = getDefaultPermissions('manager');
+                        setEditFormData({ ...editFormData, role: 'manager', supplier: '', permissions: defaultPerms });
+                      }}
+                      className={`px-4 py-2 rounded-md border-2 transition ${
+                        editFormData.role === 'manager'
+                          ? 'border-emerald-500 bg-emerald-50 text-emerald-700 font-medium'
+                          : 'border-gray-200 bg-white text-gray-800 hover:bg-white'
+                      }`}
+                    >
+                      Manager
+                    </button>
                   </div>
                   <p className="mt-2 text-xs text-gray-800">
                     {editFormData.role === 'admin' 
                       ? 'Admin can manage products, sales, customers, and inventory'
-                      : 'Agent can access POS interface and view personal sales'}
+                      : editFormData.role === 'manager'
+                        ? 'Manager can edit assigned store product name, price, and quantity only'
+                        : 'Agent can access POS interface and view personal sales'}
                   </p>
                 </div>
                 {editFormData.role === 'agent' && (
@@ -611,6 +741,43 @@ export default function SuperAdminUsers() {
                     </p>
                   </div>
                 )}
+                {editFormData.role === 'manager' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-800 mb-2">
+                      Assigned Stores <span className="text-red-500">*</span>
+                    </label>
+                    <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-md p-2 space-y-2">
+                      {shops.length === 0 ? (
+                        <p className="text-sm text-gray-800">No stores available.</p>
+                      ) : (
+                        shops.map((shop) => {
+                          const shopId = getShopId(shop);
+                          return (
+                            <label key={shopId} className="flex items-start gap-2 text-sm text-gray-800">
+                              <input
+                                type="checkbox"
+                                checked={editFormData.assignedShopIds.includes(shopId)}
+                                onChange={(e) => {
+                                  setEditFormData((prev) => ({
+                                    ...prev,
+                                    assignedShopIds: e.target.checked
+                                      ? [...prev.assignedShopIds, shopId]
+                                      : prev.assignedShopIds.filter((id) => id !== shopId)
+                                  }));
+                                }}
+                                className="mt-1"
+                              />
+                              <span>
+                                {shop.name}
+                                {shop.location ? ` - ${shop.location}` : ''}
+                              </span>
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className="flex justify-end space-x-3 pt-4">
                   <button
                     type="button"
@@ -624,7 +791,8 @@ export default function SuperAdminUsers() {
                         newPassword: '',
                         role: 'agent',
                         supplier: '',
-                        permissions: []
+                        permissions: [],
+                        assignedShopIds: []
                       });
                     }}
                     className="px-4 py-2 bg-white text-gray-800 rounded-lg hover:bg-white transition"

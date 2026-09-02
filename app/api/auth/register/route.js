@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { userDB } from '@/lib/database';
 import { createSession, hashPassword, getTokenByRole } from '@/lib/auth';
 import { getDefaultPermissions } from '@/lib/permissions';
+import { getPasswordPolicyFields } from '@/lib/password-policy';
 
 // Mark this route as dynamic to prevent build-time analysis
 export const dynamic = 'force-dynamic';
@@ -56,6 +57,13 @@ export async function POST(request) {
       );
     }
 
+    if (userRole === 'manager') {
+      return NextResponse.json(
+        { error: 'Managers must be created by superadmin with assigned stores' },
+        { status: 403 }
+      );
+    }
+
     // Hash password
     const hashedPassword = await hashPassword(password);
     
@@ -68,7 +76,8 @@ export async function POST(request) {
       name,
       role: userRole,
       token: token,
-      permissions: getDefaultPermissions(userRole)
+      permissions: getDefaultPermissions(userRole),
+      ...getPasswordPolicyFields(userRole)
     });
     
     const { session, token: jwtToken } = createSession(newUser);

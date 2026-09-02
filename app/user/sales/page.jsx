@@ -16,6 +16,19 @@ export default function UserSales() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
+  const fetchSales = async () => {
+    try {
+      // Use authenticatedFetch which automatically includes Bearer token
+      const response = await authenticatedFetch('/api/sales');
+      const data = await response.json();
+      setSales(data.sales || []);
+    } catch (error) {
+      console.error('Error fetching sales:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchUserPermissions();
     fetchUserInfo();
@@ -106,19 +119,6 @@ export default function UserSales() {
       </Layout>
     );
   }
-
-  const fetchSales = async () => {
-    try {
-      // Use authenticatedFetch which automatically includes Bearer token
-      const response = await authenticatedFetch('/api/sales');
-      const data = await response.json();
-      setSales(data.sales || []);
-    } catch (error) {
-      console.error('Error fetching sales:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <Layout userRole="user">

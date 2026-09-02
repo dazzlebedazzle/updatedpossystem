@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import Image from 'next/image';
 import Layout from '@/components/Layout';
 import { toast } from '@/lib/toast';
 import { suppliers } from '@/lib/suppliers';
@@ -10,16 +9,12 @@ import LoadingButton from '@/components/LoadingButton';
 export default function SuperAdminInventory() {
   const [products, setProducts] = useState([]);
   const [shops, setShops] = useState([]);
-  const [subWarehouses, setSubWarehouses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [showWarehouseModal, setShowWarehouseModal] = useState(false);
   const [editingProductId, setEditingProductId] = useState(null);
-  const [selectedProductForWarehouse, setSelectedProductForWarehouse] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [assigningStock, setAssigningStock] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -27,11 +22,6 @@ export default function SuperAdminInventory() {
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
   const searchInputRef = useRef(null);
-  const [warehouseFormData, setWarehouseFormData] = useState({
-    warehouseType: 'main',
-    warehouseId: '',
-    quantity: ''
-  });
   const [formData, setFormData] = useState({
     EAN_code: '',
     product_name: '',
@@ -50,7 +40,6 @@ export default function SuperAdminInventory() {
   useEffect(() => {
     fetchProducts();
     fetchShops();
-    fetchSubWarehouses();
   }, []);
 
   // Debounce search term for better performance
@@ -96,18 +85,6 @@ export default function SuperAdminInventory() {
       }
     } catch (error) {
       console.error('Error fetching shops:', error);
-    }
-  }, []);
-
-  const fetchSubWarehouses = useCallback(async () => {
-    try {
-      const response = await fetch('/api/sub-warehouses', { cache: 'default' });
-      if (response.ok) {
-        const data = await response.json();
-        setSubWarehouses(data.subWarehouses || []);
-      }
-    } catch (error) {
-      console.error('Error fetching sub-warehouses:', error);
     }
   }, []);
 
@@ -431,72 +408,6 @@ export default function SuperAdminInventory() {
     }
   }, [products]);
 
-  const handleAssignToWarehouse = (product) => {
-    setSelectedProductForWarehouse(product);
-    setWarehouseFormData({
-      warehouseType: 'main',
-      warehouseId: '',
-      quantity: ''
-    });
-    setShowWarehouseModal(true);
-  };
-
-  const handleWarehouseAssignment = async (e) => {
-    e.preventDefault();
-    
-    if (!selectedProductForWarehouse) return;
-    
-    const productId = selectedProductForWarehouse._id || selectedProductForWarehouse.id;
-    const { warehouseType, warehouseId, quantity } = warehouseFormData;
-    
-    if (warehouseType === 'sub' && !warehouseId) {
-      toast.error('Please select a sub-warehouse');
-      return;
-    }
-    
-    if (!quantity || parseFloat(quantity) <= 0) {
-      toast.error('Please enter a valid quantity');
-      return;
-    }
-    
-    setAssigningStock(true);
-    
-    try {
-      const response = await fetch('/api/warehouse-inventory', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productId,
-          warehouseType,
-          warehouseId: warehouseType === 'sub' ? warehouseId : undefined,
-          quantity: parseFloat(quantity)
-        }),
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok) {
-        toast.success(`Stock assigned to ${warehouseType === 'main' ? 'main warehouse' : 'sub-warehouse'} successfully!`);
-        setShowWarehouseModal(false);
-        setWarehouseFormData({
-          warehouseType: 'main',
-          warehouseId: '',
-          quantity: ''
-        });
-        setSelectedProductForWarehouse(null);
-        // Refresh products to show updated quantities
-        await fetchProducts();
-      } else {
-        toast.error(data.error || 'Failed to assign stock to warehouse');
-      }
-    } catch (error) {
-      console.error('Error assigning stock to warehouse:', error);
-      toast.error('Failed to assign stock to warehouse');
-    } finally {
-      setAssigningStock(false);
-    }
-  };
-
   return (
     <Layout userRole="superadmin">
       <div className="px-4 py-6 sm:px-0">
@@ -770,30 +681,21 @@ export default function SuperAdminInventory() {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{Math.round(product.qty_sold || 0)}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{product.supplier || '-'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex flex-col gap-1">
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => handleEdit(productId)}
-                                className="text-indigo-600 hover:text-indigo-900 hover:underline transition-colors"
-                                title="Edit product"
-                              >
-                                Edit
-                              </button>
-                              <span className="text-gray-300">|</span>
-                              <button
-                                onClick={() => handleDelete(productId)}
-                                className="text-red-600 hover:text-red-900 hover:underline transition-colors"
-                                title="Delete product"
-                              >
-                                Delete
-                              </button>
-                            </div>
+                          <div className="flex gap-2">
                             <button
-                              onClick={() => handleAssignToWarehouse(product)}
-                              className="text-green-600 hover:text-green-900 hover:underline transition-colors text-xs"
-                              title="Assign stock to warehouse"
+                              onClick={() => handleEdit(productId)}
+                              className="text-indigo-600 hover:text-indigo-900 hover:underline transition-colors"
+                              title="Edit product"
                             >
-                              Assign to Warehouse
+                              Edit
+                            </button>
+                            <span className="text-gray-300">|</span>
+                            <button
+                              onClick={() => handleDelete(productId)}
+                              className="text-red-600 hover:text-red-900 hover:underline transition-colors"
+                              title="Delete product"
+                            >
+                              Delete
                             </button>
                           </div>
                         </td>
@@ -1080,138 +982,7 @@ export default function SuperAdminInventory() {
           </div>
         )}
 
-        {/* Warehouse Assignment Modal */}
-        {showWarehouseModal && selectedProductForWarehouse && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setShowWarehouseModal(false);
-                setWarehouseFormData({
-                  warehouseType: 'main',
-                  warehouseId: '',
-                  quantity: ''
-                });
-                setSelectedProductForWarehouse(null);
-              }
-            }}
-          >
-            <div className="relative mx-auto p-6 border w-full max-w-md shadow-xl rounded-lg bg-white">
-              <div className="flex justify-between items-center mb-4 pb-4 border-b">
-                <h3 className="text-xl font-bold text-gray-900">
-                  Assign Stock to Warehouse
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowWarehouseModal(false);
-                    setWarehouseFormData({
-                      warehouseType: 'main',
-                      warehouseId: '',
-                      quantity: ''
-                    });
-                    setSelectedProductForWarehouse(null);
-                  }}
-                  className="text-gray-500 hover:text-gray-700 text-2xl font-light transition-colors"
-                  aria-label="Close modal"
-                >
-                  ×
-                </button>
-              </div>
-              <form onSubmit={handleWarehouseAssignment} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-800 mb-1.5">Product</label>
-                  <input
-                    type="text"
-                    value={selectedProductForWarehouse.product_name || ''}
-                    disabled
-                    className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-600 bg-gray-50"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-800 mb-1.5">Available Quantity</label>
-                  <input
-                    type="text"
-                    value={Math.round((selectedProductForWarehouse.qty || 0) - (selectedProductForWarehouse.qty_sold || 0))}
-                    disabled
-                    className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-600 bg-gray-50"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-800 mb-1.5">Warehouse Type *</label>
-                  <select
-                    value={warehouseFormData.warehouseType}
-                    onChange={(e) => setWarehouseFormData({ ...warehouseFormData, warehouseType: e.target.value, warehouseId: '' })}
-                    required
-                    className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-colors"
-                  >
-                    <option value="main">Main Warehouse</option>
-                    <option value="sub">Sub-Warehouse</option>
-                  </select>
-                </div>
-                {warehouseFormData.warehouseType === 'sub' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-800 mb-1.5">Select Sub-Warehouse *</label>
-                    <select
-                      value={warehouseFormData.warehouseId}
-                      onChange={(e) => setWarehouseFormData({ ...warehouseFormData, warehouseId: e.target.value })}
-                      required
-                      className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-colors"
-                    >
-                      <option value="">Select Sub-Warehouse</option>
-                      {subWarehouses.map((warehouse) => {
-                        const warehouseObj = warehouse.toObject ? warehouse.toObject() : warehouse;
-                        return (
-                          <option key={warehouseObj._id || warehouseObj.id} value={warehouseObj._id || warehouseObj.id} className="text-gray-800">
-                            {warehouseObj.name} {warehouseObj.location ? `- ${warehouseObj.location}` : ''}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-                )}
-                <div>
-                  <label className="block text-sm font-medium text-gray-800 mb-1.5">Quantity to Assign *</label>
-                  <input
-                    type="number"
-                    step="1"
-                    min="1"
-                    max={Math.round((selectedProductForWarehouse.qty || 0) - (selectedProductForWarehouse.qty_sold || 0))}
-                    value={warehouseFormData.quantity}
-                    onChange={(e) => setWarehouseFormData({ ...warehouseFormData, quantity: e.target.value })}
-                    required
-                    className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-colors"
-                    placeholder="Enter quantity"
-                  />
-                </div>
-                <div className="flex justify-end gap-3 pt-4 border-t mt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowWarehouseModal(false);
-                      setWarehouseFormData({
-                        warehouseType: 'main',
-                        warehouseId: '',
-                        quantity: ''
-                      });
-                      setSelectedProductForWarehouse(null);
-                    }}
-                    className="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <LoadingButton
-                    type="submit"
-                    loading={assigningStock}
-                    loadingText="Assigning..."
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
-                  >
-                    Assign Stock
-                  </LoadingButton>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+
       </div>
     </Layout>
   );

@@ -1,24 +1,7 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { CSSProperties } from "react";
 import "./globals.css";
 import ToastProvider from "@/components/ToastProvider";
-
-// Optimize font loading with display swap for better performance
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-  display: "swap",
-  preload: true,
-  fallback: ["system-ui", "arial"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-  display: "swap",
-  preload: false, // Only preload primary font
-  fallback: ["monospace"],
-});
 
 export const metadata: Metadata = {
   title: "POS System",
@@ -46,7 +29,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className="antialiased"
+        style={{
+          "--font-geist-sans": "system-ui, Arial, sans-serif",
+          "--font-geist-mono": "Consolas, 'Courier New', monospace",
+        } as CSSProperties}
         suppressHydrationWarning={true}
       >
         <ToastProvider>

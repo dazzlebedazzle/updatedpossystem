@@ -17,9 +17,25 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  passwordChangedAt: {
+    type: Date,
+    default: Date.now
+  },
+  passwordExpiresAt: {
+    type: Date,
+    default: null
+  },
+  mustChangePassword: {
+    type: Boolean,
+    default: false
+  },
+  lastAutoPasswordRefreshAt: {
+    type: Date,
+    default: null
+  },
   role: {
     type: String,
-    enum: ['superadmin', 'admin', 'agent'],
+    enum: ['superadmin', 'admin', 'agent', 'manager'],
     required: true,
     default: 'agent'
   },
@@ -30,6 +46,7 @@ const userSchema = new mongoose.Schema({
       if (this.role === 'superadmin') return 'superToken';
       if (this.role === 'admin') return 'adminToken';
       if (this.role === 'agent') return 'agentToken';
+      if (this.role === 'manager') return 'managerToken';
       return null;
     }
   },
@@ -39,11 +56,15 @@ const userSchema = new mongoose.Schema({
   },
   supplier: {
     type: String,
-    default: '',
+    default: null,
     trim: true,
     unique: true,
     sparse: true // Allows multiple null/empty values but enforces uniqueness for non-empty values
   },
+  assignedShopIds: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Shop'
+  }],
   isActive: {
     type: Boolean,
     default: true
@@ -65,6 +86,7 @@ userSchema.pre('save', function(next) {
   if (this.role === 'superadmin') this.token = 'superToken';
   else if (this.role === 'admin') this.token = 'adminToken';
   else if (this.role === 'agent') this.token = 'agentToken';
+  else if (this.role === 'manager') this.token = 'managerToken';
   next();
 });
 
@@ -72,7 +94,9 @@ userSchema.pre('save', function(next) {
 userSchema.index({ email: 1 }); // Already unique, but explicit index helps
 userSchema.index({ token: 1 }); // For token-based lookups
 userSchema.index({ role: 1 }); // For role filtering
+userSchema.index({ passwordExpiresAt: 1 }); // For password rotation checks
 userSchema.index({ supplier: 1 }); // For supplier filtering
+userSchema.index({ assignedShopIds: 1 }); // For manager store filtering
 userSchema.index({ name: 'text' }); // For text search
 
 const User = mongoose.models.User || mongoose.model('User', userSchema);

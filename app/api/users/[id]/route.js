@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { userDB } from '@/lib/database';
-import { hashPassword } from '@/lib/auth';
+import { getTokenByRole, hashPassword } from '@/lib/auth';
 import { safeJsonParse, sanitizeSession } from '@/lib/security-utils';
+import { getPasswordPolicyFields } from '@/lib/password-policy';
 
 // Mark this route as dynamic to prevent build-time analysis
 export const dynamic = 'force-dynamic';
@@ -95,6 +96,25 @@ export async function PUT(request, { params }) {
     }
     
     const updates = await request.json();
+
+    if (session.role !== 'superadmin') {
+      delete updates.role;
+      delete updates.permissions;
+      delete updates.supplier;
+      delete updates.assignedShopIds;
+      delete updates.token;
+      delete updates.isActive;
+    }
+
+    if (updates.role && !['admin', 'agent', 'manager'].includes(updates.role)) {
+      return NextResponse.json(
+        { error: 'Invalid user role' },
+        { status: 400 }
+      );
+    }
+
+    const existingUser = await userDB.findById(id);
+    const existingUserObj = existingUser?.toObject ? existingUser.toObject() : existingUser;
     
     // Check for supplier uniqueness if supplier is being updated for an agent
     if (updates.role === 'agent' && updates.supplier && updates.supplier.trim() !== '') {
@@ -115,10 +135,31 @@ export async function PUT(request, { params }) {
         );
       }
     }
-    
+
+    if (updates.role === 'manager') {
+      if (!Array.isArray(updates.assignedShopIds) || updates.assignedShopIds.length === 0) {
+        return NextResponse.json(
+          { error: 'At least one store must be assigned for managers' },
+          { status: 400 }
+        );
+      }
+      updates.supplier = '';
+      updates.assignedShopIds = updates.assignedShopIds.map((shopId) => shopId.toString());
+    } else if (updates.role && updates.role !== 'manager') {
+      updates.assignedShopIds = [];
+    }
+
+    if (updates.role) {
+      updates.token = getTokenByRole(updates.role);
+      if (!updates.password) {
+        Object.assign(updates, getPasswordPolicyFields(updates.role, new Date()));
+      }
+    }
+
     // Hash password if it's being updated
     if (updates.password) {
       updates.password = await hashPassword(updates.password);
+      Object.assign(updates, getPasswordPolicyFields(updates.role || existingUserObj?.role));
     }
     
     // Remove newPassword field if it exists (we only use password)

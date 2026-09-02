@@ -58,7 +58,13 @@ export default function Layout({ children, userRole, userName }) {
 
   const getNavItems = () => {
     const userPermissions = user?.permissions || [];
-    const basePath = userRole === 'superadmin' ? '/superadmin' : userRole === 'admin' ? '/admin' : '/user';
+    const basePath = userRole === 'superadmin' ? '/superadmin' : userRole === 'admin' ? '/admin' : userRole === 'manager' ? '/manager' : '/user';
+
+    if (userRole === 'manager') {
+      return [
+        { href: `${basePath}/store-products`, label: 'Store Products', icon: 'SP', module: MODULES.PRODUCTS },
+      ];
+    }
     
     // Define all possible menu items with their required permissions
     const allMenuItems = [
@@ -69,9 +75,18 @@ export default function Layout({ children, userRole, userName }) {
       { href: `${basePath}/scanner`, label: 'Scanner', icon: '📷', module: MODULES.PRODUCTS },
       { href: `${basePath}/pos`, label: 'POS', icon: '🛒', module: MODULES.SALES },
       { href: `${basePath}/sales`, label: userRole === 'user' ? 'My Sales' : 'Sales', icon: '💰', module: MODULES.SALES },
+      ...(userRole === 'superadmin' ? [
+        { href: `${basePath}/purchases`, label: 'Purchases', icon: 'PO', module: MODULES.PURCHASES },
+      ] : []),
       { href: `${basePath}/customers`, label: 'Customers', icon: '👤', module: MODULES.CUSTOMERS },
       { href: `${basePath}/inventory`, label: 'Inventory', icon: '📋', module: MODULES.INVENTORY },
+      ...(userRole === 'superadmin' ? [
+        { href: `${basePath}/warehouse-stock`, label: 'Warehouse Stock', icon: 'WH', module: MODULES.INVENTORY },
+      ] : []),
       { href: `${basePath}/sub-warehouses`, label: 'Sub-Warehouses', icon: '🏭', module: MODULES.INVENTORY },
+      ...(userRole === 'superadmin' ? [
+        { href: `${basePath}/targets`, label: 'Targets', icon: 'TG', module: MODULES.REPORTS },
+      ] : []),
       { href: `${basePath}/reports`, label: 'Reports', icon: '📈', module: MODULES.REPORTS },
     ];
 

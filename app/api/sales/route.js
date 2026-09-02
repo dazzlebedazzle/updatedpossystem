@@ -236,25 +236,32 @@ export async function POST(request) {
           qty_sold: currentQtySold + quantityInStockUnit
         });
         
-        // Decrease inventory shop stock if user has a shop
+        // Decrease inventory shop stock for the shop assigned to this user
         if (session.userId) {
           try {
             const { warehouseInventoryDB } = await import('@/lib/database');
             const productId = productObj._id || productObj.id;
             const warehouseInventory = await warehouseInventoryDB.findByProductId(productId);
+            const userShops = await shopDB.findByUserId(session.userId);
+            const userShopIds = new Set(
+              (userShops || []).map(shop => {
+                const shopObj = shop.toObject ? shop.toObject() : shop;
+                return (shopObj._id || shopObj.id)?.toString();
+              }).filter(Boolean)
+            );
             
-            if (warehouseInventory) {
+            if (warehouseInventory && userShopIds.size > 0) {
               const warehouseObj = warehouseInventory.toObject ? warehouseInventory.toObject() : warehouseInventory;
               const shopStock = warehouseObj.shopStock || [];
               const userShopStock = shopStock.find(s => {
                 const shopId = s.shopId?.toString();
-                return shopId === session.userId.toString();
+                return userShopIds.has(shopId);
               });
               
               if (userShopStock && userShopStock.quantity >= quantityInStockUnit) {
                 // Update shop stock
                 const updatedShopStock = shopStock.map(s => {
-                  if (s.shopId?.toString() === session.userId.toString()) {
+                  if (userShopIds.has(s.shopId?.toString())) {
                     return { ...s, quantity: s.quantity - quantityInStockUnit };
                   }
                   return s;
