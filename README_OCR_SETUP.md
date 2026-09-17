@@ -46,4 +46,5 @@ The application will automatically:
 - The API key is stored in environment variables for security
 - If no API key is provided, the demo key will be used (limited functionality)
 - For production, always use your own API key
+- After changing OCR settings on the server, rebuild and restart the app
 
