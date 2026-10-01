@@ -554,10 +554,10 @@ export default function Receipt({ saleData, onClose }) {
                   </div>
                   <div className="company-name text-gray-800" style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '3px', color: '#1f2937' }}>TAJALLI</div>
                   <div className="company-details text-gray-800" style={{ fontSize: '9px', lineHeight: '1.3', color: '#1f2937' }}>
-                    <div>GSTIN: 07AAXCS0618K1ZT</div>
+                    <div>GSTIN: 05AAICD8016E1ZX</div>
                     <div>FASSAI: 13323999001107</div>
-                    <div style={{ marginTop: '3px' }}>16-B Jangpura Road</div>
-                    <div>Bhogal, Jangpura, New Delhi</div>
+                    <div style={{ marginTop: '3px' }}>Private Limited Company</div>
+                    <div>Scholars Home, Second Floor, Rajpur Road, Jakhan, Dehradun, Uttarakhand</div>
                     <div>📞 +91-XXXXXXXXXX</div>
                   </div>
                 </div>
